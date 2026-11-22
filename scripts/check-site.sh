@@ -10,6 +10,7 @@ fi
 for asset in \
   site/sw.js \
   site/js/core/soroban.js \
+  site/js/core/exercise-generator.js \
   site/manifest.webmanifest \
   site/glass/glass-app.js \
   site/glass/glass-app.css \
@@ -27,6 +28,7 @@ fi
 if [[ -f site/sw.js ]]; then
   node --check site/sw.js
   node --check site/js/core/soroban.js
+  node --check site/js/core/exercise-generator.js
 fi
 if [[ -f site/manifest.webmanifest ]]; then
   python3 -m json.tool site/manifest.webmanifest > /dev/null

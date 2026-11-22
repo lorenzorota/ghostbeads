@@ -260,19 +260,32 @@ html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) :is([class*=
   html[data-theme='light'].ghost-glass-active {--gb-sheet-material:rgb(243,242,238);}
 }
 
-/* Installed iPhone PWA: use native-style grouped-list gutters.
- * Keep the bottom sheet full width; let the settings rows use more space. */
-@media (display-mode: standalone) and (orientation: portrait) and (max-width: 600px) {
-  html.ghost-glass-active .lg-sheet.lg-sheet--detents:has(.gbglass-sheet-content) {
-    width: 100%;
+/* Mobile Settings: native-width grouped rows (16px from the screen edge).
+ * Explicitly reset the Sheet library's 24px outer padding and the app's
+ * mobile calc(100vw - 26px) width, which otherwise combine to narrow cards.
+ * Keep the header inset independently; don't touch drag/scroll behavior.
+ * ghost-glass-active is only enabled for the supported iOS glass interface. */
+@media (orientation: portrait) and (max-width: 600px) {
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents {
+    width: 100% !important;
   }
-  html.ghost-glass-active .lg-sheet__content:has(.gbglass-sheet-content) {
-    padding-inline: 8px;
+
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents > .lg-sheet__content {
+    padding-inline: 0 !important;
   }
-  html.ghost-glass-active .gbglass-sheet-content {
-    width: 100%;
+
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents .gbglass-sheet-content {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: none !important;
   }
-  html.ghost-glass-active .gbglass-sheet-scroll {
-    padding-inline: 8px;
+
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents .gbglass-sheet-scroll {
+    padding-inline: 16px !important;
+  }
+
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents .gbglass-sheet-head {
+    margin-inline: 24px;
+    padding-inline: 12px;
   }
 }

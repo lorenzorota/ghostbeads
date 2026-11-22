@@ -45,6 +45,26 @@
     background:var(--bg);pointer-events:none;z-index:1;
   }
   *{box-sizing:border-box}
+  /* Installed PWA: prevent accidental selection of app interface text.
+     Keep native text editing and copy/paste in form fields. */
+  @media (display-mode: standalone) {
+    html, body, body * {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    body { -webkit-touch-callout: none; }
+    input, textarea, [contenteditable], [contenteditable] * {
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+    }
+    select, option {
+      -webkit-user-select: auto;
+      user-select: auto;
+      -webkit-touch-callout: default;
+    }
+    a { -webkit-touch-callout: default; }
+  }
   body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
   /* Hidden until the genuine React GlassCard surfaces mount in installed PWAs. */
   .gbglass-panel-mount{display:none}

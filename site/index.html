@@ -988,11 +988,13 @@
 
 <script src="./js/core/soroban.js"></script>
 <script src="./js/core/exercise-generator.js"></script>
+<script src="./js/playback/controller.js"></script>
 <script>
 (()=>{'use strict';
   const $=id=>document.getElementById(id);
   const canvas=$('abacus'), ctx=canvas.getContext('2d');
   const speech=window.speechSynthesis||null;
+  const playback=window.GhostBeadsPlayback.createPlaybackController();
   // Safari on iOS is especially sensitive to cancel() immediately before speak().
   // Keep the first utterance inside the Start/Test Voice tap without cancelling
   // an empty queue; this also helps preserve WebKit's user-activation permission.
@@ -1013,10 +1015,8 @@
   }
   const FINAL_MOVE_SETTLE_MS=90;
   const state={value:0,animationStart:0,animationMs:850,motionTravelMs:850,motionFeel:'flick',columns:2,motionFrom:null,motionTo:null,highlightColumn:-1,highlightSign:0,
-    active:false,paused:false,waiting:false,answered:false,hasExercise:false,steps:[],stepIndex:0,currentStep:0,moveCursor:0,movePhase:'idle',pendingStep:false,pendingMove:false,initialValue:0,finalValue:45,detailLevel:2,movePlanOverrides:new Map(),sessionId:0,
-    timer:null,timerDue:0,timerCb:null,remainingMs:0,
-    speechWatchdog:null,speechWatchdogCb:null,speechWatchdogDue:0,speechWatchdogRemaining:0,
-    currentUtterance:null,nextQueued:false,pausedAt:0,mode:'ready',selectedMode:'practice'};
+    active:false,waiting:false,answered:false,hasExercise:false,steps:[],stepIndex:0,currentStep:0,moveCursor:0,movePhase:'idle',pendingStep:false,pendingMove:false,initialValue:0,finalValue:45,detailLevel:2,movePlanOverrides:new Map(),
+    currentUtterance:null,nextQueued:false,mode:'ready',selectedMode:'practice'};
 
   function dateKey(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
   let progress={};try{progress=JSON.parse(localStorage.getItem('ghostBeadsProgressV1')||'{}')||{}}catch{}
@@ -1436,7 +1436,7 @@
         bundled.playing=false;bundled.nodes=[];
         done?.(true);
       };
-      if(state.paused)ctx.suspend().catch(()=>{});
+      if(playback.paused)ctx.suspend().catch(()=>{});
       status('Playing offline English audio…');
     }).catch(err=>{
       if(token!==bundled.token)return;
@@ -1447,13 +1447,9 @@
     });
   }
 
-  function clearSpeechWatchdog(){clearTimeout(state.speechWatchdog);state.speechWatchdog=null;state.speechWatchdogCb=null;state.speechWatchdogRemaining=0}
-  function armSpeechWatchdog(cb,ms){
-    clearSpeechWatchdog();state.speechWatchdogCb=cb;state.speechWatchdogRemaining=ms;
-    if(state.paused)return;
-    state.speechWatchdogDue=performance.now()+ms;
-    state.speechWatchdog=setTimeout(()=>{state.speechWatchdog=null;const fn=state.speechWatchdogCb;state.speechWatchdogCb=null;fn?.()},ms);
-  }
+  // The speech watchdog has its own timer channel, independent of bead moves.
+  function clearSpeechWatchdog(){playback.cancel('speech')}
+  function armSpeechWatchdog(cb,ms){playback.schedule('speech',cb,ms)}
   function cancelSpeech(){clearSpeechWatchdog();
     stopBundledSpeech();
     const hadUtterance=!!state.currentUtterance;
@@ -1482,7 +1478,7 @@
     const finish=(ok=true)=>{if(complete)return;begin();complete=true;clearSpeechWatchdog();state.currentUtterance=null;if(typeof done==='function')done(ok)};
     const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=Number($('rate').value);u.volume=1;u.pitch=1;
     const voice=chooseVoice();if(voice){u.voice=voice;u.lang=voice.lang}
-    u.onstart=()=>{begin();if(state.paused){try{speech?.pause()}catch{}}if(state.active)status('Speaking '+text+'…')};
+    u.onstart=()=>{begin();if(playback.paused){try{speech?.pause()}catch{}}if(state.active)status('Speaking '+text+'…')};
     u.onend=finish;
     u.onerror=ev=>{status('Voice issue ('+(ev.error||'unknown')+'). Try another voice in Settings.');finish(false)};
     state.currentUtterance=u;
@@ -1534,7 +1530,7 @@
   function travelDuration(slotMs,feel){
     return feel==='flick'?Math.min(360,Math.max(160,slotMs*.34)):slotMs;
   }
-  function motionClock(now){return (state.paused?state.pausedAt:now)-state.animationStart}
+  function motionClock(now){return (playback.paused?playback.pausedAt:now)-state.animationStart}
   function movementProgress(now){
     const u=clamp01(motionClock(now)/Math.max(1,state.motionTravelMs));
     return state.motionFeel==='flick'?flickEase(u):softEase(u);
@@ -1768,18 +1764,9 @@
     status('Movement detail set to Level '+newLevel+'. '+
       (finished?'This number is complete.':'Remaining hand moves updated.'));
   }
-  // The app has a single pause-aware timer for both bead moves and
-  // the interval before the next spoken arithmetic operation.
-  function armTimer(cb,ms){
-    clearTimeout(state.timer);state.timer=null;
-    state.timerCb=cb;state.remainingMs=Math.max(0,ms);
-    if(state.paused)return;
-    state.timerDue=performance.now()+state.remainingMs;
-    state.timer=setTimeout(()=>{
-      state.timer=null;const action=state.timerCb;state.timerCb=null;
-      if(action)action();
-    },state.remainingMs);
-  }
+  // Spoken-step sequencing and bead movement share one pause-aware channel.
+  // The controller invalidates queued callbacks on stop, seek, or restart.
+  function armTimer(cb,ms){playback.schedule('sequence',cb,ms)}
   function valueAtMove(index,cursor){
     const moves=stepDescription(index).moves;
     if(cursor<0||cursor>moves.length)throw Error('Hand move outside this operation');
@@ -1789,8 +1776,8 @@
   // animation, if any, is the last selected move (cursor - 1). This makes
   // seeking to an intermediate state an exact operation on the abacus value.
   function runMovesFromCursor(index,token){
-    if(!state.active||token!==state.sessionId)return;
-    if(state.paused){armTimer(()=>runMovesFromCursor(index,token),0);return}
+    if(!state.active||token!==playback.token)return;
+    if(playback.paused){armTimer(()=>runMovesFromCursor(index,token),0);return}
     const d=stepDescription(index),moves=d.moves;
     if(state.moveCursor>=moves.length){
       state.movePhase='between';
@@ -1821,7 +1808,7 @@
     // interval begins. The skip-arrow can then distinguish a bead currently
     // moving from one that has already reached its new position.
     armTimer(()=>{
-      if(!state.active||token!==state.sessionId)return;
+      if(!state.active||token!==playback.token)return;
       state.movePhase='settling';
       armTimer(()=>runMovesFromCursor(index,token),pause);
     },state.animationMs);
@@ -1843,7 +1830,7 @@
     $('previousMove').disabled=!hasExercise||state.mode==='test'||(state.currentStep===0&&state.moveCursor<=0);
     $('nextMove').disabled=!hasExercise||state.mode==='test'||(state.currentStep===state.steps.length&&state.moveCursor>=moves.length&&state.movePhase!=='animating');
     $('repeatStep').disabled=!hasExercise;
-    const showPlayIcon=!active||state.paused;
+    const showPlayIcon=!active||playback.paused;
     $('pause').title=showPlayIcon?'Play':'Pause';
     $('pause').setAttribute('aria-label',showPlayIcon?'Play':'Pause');
     $('pauseIcon').innerHTML=showPlayIcon
@@ -1863,15 +1850,13 @@
     });
   }
   function stopCurrentPlayback(){
-    // Stop any timer/speech associated with the old spoken step. Incrementing
-    // the token prevents outdated callbacks from advancing the exercise.
-    state.sessionId++;
-    clearTimeout(state.timer);state.timer=null;state.timerCb=null;state.remainingMs=0;
+    // Invalidate sequence and watchdog callbacks before cancelling audio.
+    playback.stop();
     cancelSpeech();
   }
   function reset(){
     stopCurrentPlayback();state.active=false;state.waiting=false;state.answered=false;
-    state.paused=false;state.pausedAt=0;state.nextQueued=false;
+    state.nextQueued=false;
     state.hasExercise=false;state.pendingStep=false;
     state.steps=[];state.movePlanOverrides.clear();state.stepIndex=0;state.currentStep=0;state.moveCursor=0;state.movePhase='idle';state.pendingMove=false;updateButtons();
   }
@@ -1900,7 +1885,7 @@
     updateTotal();
   }
   function runSpokenStep(index,token){
-    if(!state.active||token!==state.sessionId)return;
+    if(!state.active||token!==playback.token)return;
     state.movePlanOverrides.delete(index);
     state.currentStep=index;state.stepIndex=index;state.moveCursor=0;
     state.pendingStep=false;state.pendingMove=false;state.movePhase='speaking';
@@ -1918,7 +1903,7 @@
       $('stepInfo').textContent=index===0?'Starting number · calculate mentally':
         'Operation '+index+' of '+state.steps.length+' · calculate mentally';
       const afterNumber=()=>{
-        if(!state.active||token!==state.sessionId)return;
+        if(!state.active||token!==playback.token)return;
         state.movePhase='between';
         scheduleNext(token);
       };
@@ -1930,7 +1915,7 @@
       return;
     }
     const afterNumber=()=>{
-      if(!state.active||token!==state.sessionId)return;
+      if(!state.active||token!==playback.token)return;
       state.movePhase='lead';
       const latestMoves=stepDescription(index).moves;
       $('stepInfo').textContent=index===0
@@ -1945,10 +1930,10 @@
     }
   }
   function scheduleNext(token){
-    if(!state.active||token!==state.sessionId)return;
+    if(!state.active||token!==playback.token)return;
     state.movePhase='between';
     armTimer(()=>{
-      if(!state.active||token!==state.sessionId)return;
+      if(!state.active||token!==playback.token)return;
       const target=state.currentStep+1;
       if(target>state.steps.length){finish();return}
       runSpokenStep(target,token);
@@ -1960,18 +1945,17 @@
     if(!state.hasExercise)return;
     const target=Math.max(0,Math.min(index,state.steps.length));
     stopCurrentPlayback();
+    playback.begin({paused:!playImmediately});
     state.movePlanOverrides.delete(target);
     state.currentStep=target;state.stepIndex=target;state.moveCursor=0;
     state.active=true;state.waiting=false;
     state.pendingStep=!playImmediately;state.pendingMove=false;state.movePhase='selected';
-    state.paused=!playImmediately;
-    state.pausedAt=state.paused?performance.now():0;
     moveTo(state.mode==='test'?0:valueBeforeStep(target),true);
     showPreparedStep(target);
     updateButtons();
     if(playImmediately){
       status(target===0?'Replaying the starting number…':`Playing operation ${target}…`);
-      armTimer(()=>runSpokenStep(target,state.sessionId),NAVIGATION_PAUSE_MS);
+      armTimer(()=>runSpokenStep(target,playback.token),NAVIGATION_PAUSE_MS);
     }else{
       status(state.mode==='test'
         ?'Number '+(target+1)+' selected. Press Play to present it.'
@@ -1987,18 +1971,17 @@
     const d=stepDescription(index);
     const target=Math.max(0,Math.min(cursor,d.moves.length));
     stopCurrentPlayback();
+    playback.begin({paused:!playImmediately});
     state.active=true;state.waiting=false;
     state.currentStep=index;state.stepIndex=index;state.moveCursor=target;
     state.pendingStep=false;state.pendingMove=!playImmediately;state.movePhase='selected';
-    state.paused=!playImmediately;
-    state.pausedAt=state.paused?performance.now():0;
     moveTo(valueAtMove(index,target),true);
     showPreparedStep(index);
     $('stepInfo').textContent='Hand move '+target+' of '+d.moves.length+' · '+(target?d.moves[target-1].label:'before first move');
     updateButtons();
     if(playImmediately){
       status('Continuing at hand move '+target+' of '+d.moves.length+'.');
-      armTimer(()=>runMovesFromCursor(index,state.sessionId),NAVIGATION_PAUSE_MS);
+      armTimer(()=>runMovesFromCursor(index,playback.token),NAVIGATION_PAUSE_MS);
     }else{
       status('Hand move '+target+' of '+d.moves.length+' selected. Press Play to continue.');
     }
@@ -2029,10 +2012,10 @@
         cursor=Math.min(1,stepDescription(index).moves.length);
       }else return;
     }
-    seekToMove(index,cursor,!state.paused);
+    seekToMove(index,cursor,!playback.paused);
   }
   function run(initial,ops,mode){
-    reset();state.active=true;state.hasExercise=true;state.mode=mode;
+    reset();playback.begin();state.active=true;state.hasExercise=true;state.mode=mode;
     state.columns=Math.max(1,Number($('digits').value),String(Math.max(initial,...ops.map(o=>o.value))).length);
 
     state.initialValue=initial;state.steps=ops;state.detailLevel=Number($('moveDetail').value);state.finalValue=ops.length?ops[ops.length-1].value:initial;
@@ -2043,10 +2026,11 @@
     $('stepInfo').textContent='Starting number · '+(ops.length+1)+' spoken numbers';
     $('tips').classList.add('hidden');
     $('answer').value='';feedback('');updateButtons();
-    runSpokenStep(0,state.sessionId);
+    runSpokenStep(0,playback.token);
   }
   function finish(){
-    state.active=false;state.waiting=!state.answered;state.paused=false;state.pendingStep=false;state.pendingMove=false;state.movePhase='completed';
+    playback.complete();
+    state.active=false;state.waiting=!state.answered;state.pendingStep=false;state.pendingMove=false;state.movePhase='completed';
     cancelSpeech();
     $('phase').textContent=state.answered?'Solution':'Your answer';
     $('operation').textContent=state.answered?String(state.finalValue):'= ?';
@@ -2069,34 +2053,23 @@
     status('Start another practice session when ready.');updateButtons();
   }
   function togglePause(){if(!state.active)return;
-    if(!state.paused){
-      state.paused=true;state.pausedAt=performance.now();
-      if(state.timer!==null){
-        clearTimeout(state.timer);state.timer=null;
-        state.remainingMs=Math.max(0,state.timerDue-state.pausedAt);
-      }
-      if(state.speechWatchdog!==null){
-        clearTimeout(state.speechWatchdog);state.speechWatchdog=null;
-        state.speechWatchdogRemaining=Math.max(0,state.speechWatchdogDue-state.pausedAt);
-      }
+    if(!playback.paused){
+      playback.pause();
       if(speech&&speech.speaking){try{speech.pause()}catch{}}
       if(bundled.playing&&bundled.ctx){bundled.ctx.suspend().catch(()=>{})}
       status('Paused. Use the arrows to choose a spoken step.');
     }else{
-      state.paused=false;
-      state.animationStart+=performance.now()-state.pausedAt;
-      state.pausedAt=0;
+      // Preserve the current on-screen bead position across the pause.
+      state.animationStart+=playback.resume();
       if(state.pendingStep){
         state.pendingStep=false;
-        armTimer(()=>runSpokenStep(state.currentStep,state.sessionId),NAVIGATION_PAUSE_MS);
+        armTimer(()=>runSpokenStep(state.currentStep,playback.token),NAVIGATION_PAUSE_MS);
       }else if(state.pendingMove){
         state.pendingMove=false;
-        armTimer(()=>runMovesFromCursor(state.currentStep,state.sessionId),NAVIGATION_PAUSE_MS);
+        armTimer(()=>runMovesFromCursor(state.currentStep,playback.token),NAVIGATION_PAUSE_MS);
       }else{
         if(speech&&speech.paused){try{speech.resume()}catch{}}
         if(bundled.playing&&bundled.ctx){bundled.ctx.resume().catch(()=>{})}
-        if(state.timerCb)armTimer(state.timerCb,state.remainingMs);
-        if(state.speechWatchdogCb)armSpeechWatchdog(state.speechWatchdogCb,state.speechWatchdogRemaining);
       }
       status('Playing.');
     }
@@ -2104,10 +2077,10 @@
   }
   $('start').addEventListener('click',()=>{prepareSpeechOnTap();const s=makeSession();run(s.initial,s.operations,state.selectedMode)});
   $('pause').addEventListener('click',()=>{prepareSpeechOnTap();togglePause()});
-  $('previousStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep-1,!state.paused)});
+  $('previousStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep-1,!playback.paused)});
   $('previousMove').addEventListener('click',()=>navigateHandMove(-1));
   $('nextMove').addEventListener('click',()=>navigateHandMove(1));
-  $('nextStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep+1,!state.paused)});
+  $('nextStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep+1,!playback.paused)});
   $('repeatStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep,true)});
   $('stop').addEventListener('click',()=>{reset();state.mode='ready';$('phase').textContent=state.selectedMode==='test'?'Ready to test':'Ready to practice';$('stepInfo').textContent='Session stopped.';$('operation').textContent='—';moveTo(0,true);$('tips').classList.add('hidden');status('Session stopped.');feedback('')});
   $('check').addEventListener('click',checkAnswer);

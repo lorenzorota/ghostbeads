@@ -9,6 +9,7 @@ fi
 # These files are referenced by the app shell and must be included in deploys.
 for asset in \
   site/sw.js \
+  site/js/core/soroban.js \
   site/manifest.webmanifest \
   site/glass/glass-app.js \
   site/glass/glass-app.css \
@@ -25,8 +26,10 @@ if [[ -n "$(find site -type l -print -quit)" ]]; then
 fi
 if [[ -f site/sw.js ]]; then
   node --check site/sw.js
+  node --check site/js/core/soroban.js
 fi
 if [[ -f site/manifest.webmanifest ]]; then
   python3 -m json.tool site/manifest.webmanifest > /dev/null
 fi
+node --test tests/*.test.js
 printf 'Static site checks passed.\n'

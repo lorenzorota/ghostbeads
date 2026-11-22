@@ -36,6 +36,14 @@ The contents of `site/` can be hosted on any static web server supporting HTTPS.
 
 An optional GitHub Actions workflow supports automatic deployment over SSH using `rsync`. See [DEPLOYMENT.md](DEPLOYMENT.md) for configuration instructions.
 
+## Tests
+
+Run the regression tests with Node.js (version 20+):
+
+```bash
+node --test tests/*.test.js
+```
+
 ## License
 
 GhostBeads is open-source software licensed under the [MIT License](LICENSE).

@@ -1,0 +1,21 @@
+# Secrets, OS files, and build outputs
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+node_modules/
+.venv/
+.kokoro-model/
+dist/
+*.zip
+*.tar
+*.tar.gz
+
+# Resources
+/site/audio/
+*.sqlite
+*.sqlite3

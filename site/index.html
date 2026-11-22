@@ -1,0 +1,2307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=auto">
+<meta name="theme-color" content="#090b0d">
+<title>Ghost Beads · Mental Abacus</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- On modern iOS standalone apps, leave the status bar style unset so
+     WebKit can sample the page background for both light and dark themes. -->
+<meta name="apple-mobile-web-app-title" content="Ghost Beads">
+<meta name="description" content="Daily ghost-bead soroban practice, mental arithmetic tests, and spoken exercises. Works offline after installation.">
+<script>
+// Set the visual theme before first paint; older saved exercises still load.
+(() => {
+  const media=window.matchMedia('(prefers-color-scheme: dark)');
+  let stored='system';
+  try {
+    const settings=JSON.parse(localStorage.getItem('ghostBeadsSettingsV4')||'{}');
+    if(['system','light','dark'].includes(settings.appearance)) stored=settings.appearance;
+  } catch (_) {}
+  window.ghostAppearance=stored;
+  const apply=() => {
+    const choice=window.ghostAppearance;
+    const theme=choice==='system'?(media.matches?'dark':'light'):choice;
+    document.documentElement.dataset.theme=theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='light'?'#f3f1eb':'#080a0c');
+  };
+  window.applyGhostAppearance=choice => {window.ghostAppearance=choice;apply();};
+  if(media.addEventListener) media.addEventListener('change',apply);
+  else if(media.addListener) media.addListener(apply);
+  apply();
+})();
+</script>
+<style>
+  :root{color-scheme:dark;--bg:#080a0c;--surface:#101417;--border:#293136;--gold:#e6c49a;--muted:#929a9c;--text:#f0ede7;--mint:#a3d7cf}
+  /* Use a real painted edge, not a pseudo-element: modern iOS samples this
+     surface to choose the Home Screen app's native status-bar backdrop. */
+  html { background:var(--bg); }
+  #statusBarBackdrop {
+    position:fixed;top:0;left:0;width:100%;height:2px;
+    background:var(--bg);pointer-events:none;z-index:1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  /* Hidden until the genuine React GlassCard surfaces mount in installed PWAs. */
+  .gbglass-panel-mount{display:none}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  button:disabled{opacity:.38;cursor:not-allowed}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #ddbb88;outline-offset:3px}
+  .shell{max-width:1040px;margin:auto;padding:27px 26px 32px}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+  .brand{font-weight:650;letter-spacing:.20em;font-size:19px;color:var(--gold)}
+  .brand-caption{color:#9ba2a3;font-size:10px;letter-spacing:.22em;margin-top:3px}
+  .header-actions{display:flex;align-items:center;gap:15px}
+  .today{font-size:12px;color:#a7b3b3;white-space:nowrap}
+  .today strong{font-weight:650;color:#dfebe8}
+  .icon-button{width:42px;height:42px;border-radius:12px;border:1px solid #30393d;display:grid;place-items:center;background:#161c1f;color:#d3d8d5;transition:background .15s}
+  .icon-button:hover{background:#263034}
+  .icon-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+  .stage{display:grid;grid-template-columns:minmax(205px,245px) minmax(0,1fr);background:#0b0f11;border:1px solid #263034;border-radius:21px;overflow:hidden;box-shadow:0 16px 65px rgba(0,0,0,.2)}
+  .readout{position:relative;min-width:0;padding:35px 20px 28px;border-right:1px solid #20282c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(110deg,#0d1215 0%,#0a0d0f 92%)}
+  .eyebrow{text-transform:uppercase;color:#99a4a5;letter-spacing:.20em;font-size:10px;min-height:19px}
+  .operation{font:normal clamp(37px,4.7vw,61px)/1.1 Georgia,"Times New Roman",serif;min-height:79px;margin:21px -10px 14px;white-space:nowrap;display:flex;align-items:center;justify-content:center;letter-spacing:.01em;font-variant-numeric:lining-nums}
+  .step{min-height:42px;font-size:13px;color:#98a4a5;max-width:230px}
+  .total{margin-top:19px;font-size:14px;color:#aed8cd;min-height:24px}
+  .tips{margin-top:33px;padding-top:15px;border-top:1px solid #263035;color:#a7a7a0;font:13px/1.7 Georgia,serif;max-width:210px}
+  .tips b{font-weight:normal;color:#85c6c9}
+  .bead-area{position:relative;min-height:570px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,rgba(28,31,32,.26),transparent 67%),linear-gradient(#090b0d,#080a0c)}
+  #abacus{display:block;width:100%;height:570px}
+  .toolbar{margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .mode-picker{display:flex;gap:4px;align-items:center;background:#11191c;border:1px solid #364246;border-radius:12px;padding:4px}
+  .mode-option{border:1px solid transparent;background:transparent;color:#a7b1af;border-radius:9px;padding:6px 15px;min-height:41px;font-size:13px;font-weight:660;line-height:1.25}
+  .mode-option span{display:block;color:#8c9b9b;font-size:10px;font-weight:450;margin-top:2px}
+  .mode-option[aria-pressed="true"]{background:#293739;border-color:#485654;color:#f1dfc4}
+  .mode-option[aria-pressed="true"] span{color:#b6cac7}
+  .mode-option:hover:not(:disabled):not([aria-pressed="true"]){background:#212b2d}
+  .mode-option:disabled{opacity:.55}
+  .btn{border:1px solid #3a4549;background:#192226;color:#e5e9e6;border-radius:11px;min-height:45px;padding:10px 19px;font-size:13px;font-weight:640;white-space:nowrap}
+  .btn:hover:not(:disabled){background:#29363a}
+  .btn.primary{background:#d2b181;border-color:#d2b181;color:#14110f;min-width:158px}
+  .btn.primary:hover:not(:disabled){background:#e4c79a}
+  .btn.subtle{background:transparent;color:#9eabae;border-color:#364044}
+  .playback-controls{display:flex;align-items:center;gap:5px;padding:4px;border:1px solid #344044;background:#10171a;border-radius:13px}
+  .playback-controls .transport{width:42px;height:39px;min-height:39px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:#e7e4da}
+  .playback-controls .transport:hover:not(:disabled){background:#2b3539}
+  .playback-controls .transport:disabled{opacity:.27}
+  .playback-controls .transport.main-transport{background:#28383a;color:#efcf9e;width:45px}
+  .playback-controls svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .playback-controls .transport.main-transport svg{fill:currentColor;stroke:none}
+  .playback-controls #stepCounter{font-size:11px;color:#aab3af;min-width:113px;white-space:nowrap;text-align:center;padding:0 9px;border-left:1px solid #313b3e}
+  .playback-controls .transport[aria-label^="Previous operation"],.playback-controls .transport[aria-label^="Next operation"]{color:#a0c4c1}
+  .answer{display:flex;gap:8px;align-items:center}
+  .answer input{width:132px;min-height:45px;border-radius:10px;border:1px solid #445354;background:#10171a;color:#fff;padding:8px 13px;font-size:18px}
+  .underbar{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-top:16px;min-height:27px;color:#9aa4a3;font-size:12px}
+  .underbar #feedback{color:var(--gold);font-weight:600}
+  .underbar #status{max-width:680px;text-align:right}
+  .hidden{display:none!important}
+  dialog{width:min(625px,calc(100vw - 30px));max-height:calc(100vh - 38px);overflow-y:auto;padding:0;color:var(--text);background:#13191d;border:1px solid #3a4547;border-radius:19px;box-shadow:0 25px 110px rgba(0,0,0,.8)}
+  dialog::backdrop{background:rgba(2,4,5,.78);backdrop-filter:blur(5px)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:22px 25px 15px;border-bottom:1px solid #293236}
+  .modal-head h2{font-size:20px;font-weight:650;margin:0}
+  .close{font-size:23px;line-height:1;width:34px;height:34px;border:0;background:transparent;color:#b8c0c1;border-radius:8px}
+  .close:hover{background:#263034}
+  .modal-body{padding:23px 25px 26px}
+  .section-title{font-weight:670;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#dfc198;margin:0 0 14px}
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#bdc6c5}
+  .field select,.field input{width:100%;border:1px solid #3d4b50;border-radius:9px;background:#0c1114;color:#f4f1ed;min-height:41px;padding:9px 11px}
+  .full{grid-column:1/-1}
+  .hint{font-size:12px;color:#909d9c;line-height:1.6;margin:8px 0 0}
+  .speech-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0 25px}
+  .speech-row .btn{min-height:39px;padding:8px 13px}
+  #voiceResult{font-size:12px;color:#9cb7ae;flex:1}
+  .setting-divider{height:1px;background:#2a3337;margin:0 0 22px}
+  .checkbox-line{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:13px;color:#c0c7c4;cursor:pointer}
+  .checkbox-line input{accent-color:#ccaa78;width:16px;height:16px}
+  .modal-foot{padding-top:24px;display:flex;justify-content:flex-end}
+  /* Three responsive layouts: desktop (>1000), tablet (761-1000),
+     and compact bead-first phone (<=760). All rules respond to viewport
+     resize, not a device-type check. */
+  @media (min-width:761px) and (max-width:1000px){
+    .shell{padding:20px 20px 28px}
+    .stage{grid-template-columns:minmax(185px,205px) minmax(0,1fr)}
+    .readout{padding:26px 13px 20px}
+    .operation{font-size:clamp(39px,5vw,53px)}
+    .tips{margin-top:19px}
+    .bead-area{min-height:515px}
+    #abacus{height:515px}
+    .toolbar{gap:8px}
+    .playback-controls #stepCounter{min-width:100px}
+  }
+  @media (max-width:760px), (max-height:510px) and (max-width:960px){
+    .shell{width:100%;max-width:630px;padding:12px 12px max(22px,env(safe-area-inset-bottom))}
+    .header{gap:9px;margin-bottom:11px}
+    .brand{font-size:16px;letter-spacing:.14em}
+    .brand-caption{display:none}
+    .header-actions{gap:8px}
+    .today{font-size:0;letter-spacing:0}
+    .today strong{font-size:12px}
+    .icon-button{width:40px;height:40px;border-radius:11px}
+
+    /* The DOM remains readable and semantic. CSS reverses the two stage
+       sections, keeping the abacus ABOVE the arithmetic readout on phones. */
+    .stage{display:flex;flex-direction:column;border-radius:17px}
+    .bead-area{order:0;min-height:0;height:clamp(350px,51svh,485px);border-bottom:1px solid #263034}
+    #abacus{width:100%;height:100%}
+    .readout{order:1;min-height:0;padding:11px 14px 12px;
+      border:0;justify-content:center;
+      background:linear-gradient(180deg,#0b0f11,#0d1316)}
+    .eyebrow{min-height:0;font-size:9px;letter-spacing:.15em;line-height:1.4}
+    .operation{font-size:clamp(35px,10vw,46px);min-height:40px;margin:3px 0 0;line-height:1.12}
+    .step,.tips{display:none!important}
+    .total{font-size:11px;min-height:0;margin-top:2px}
+    .total:empty{display:none}
+
+    /* Navigation follows the readout, before modes and session actions.
+       One row of six large touch targets; counter on its own quiet line. */
+    .toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:'navigation navigation' 'mode action' 'answer answer';
+      gap:9px;align-items:center;margin-top:10px}
+    .playback-controls{grid-area:navigation;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:3px;width:100%;padding:4px;border-radius:12px}
+    .playback-controls .transport,
+    .playback-controls .transport.main-transport{width:100%;min-width:0;height:43px;min-height:43px;border-radius:8px}
+    .playback-controls svg{width:20px;height:20px}
+    .playback-controls #stepCounter{grid-column:1/-1;min-width:0;line-height:1.4;
+      padding:5px 2px 2px;border:0;border-top:1px solid #303a3d;
+      text-align:center;font-size:10px}
+    .mode-picker{grid-area:mode;min-width:0;justify-content:stretch;gap:2px;padding:3px}
+    .mode-option{flex:1;min-width:0;min-height:42px;padding:7px 9px;font-size:12px}
+    .mode-option span{display:none}
+    #start,#stop{grid-area:action;justify-self:end;min-width:92px;min-height:47px;padding:10px 13px}
+    #start{font-size:0}
+    #start::after{content:'Start';font-size:13px}
+    #start:disabled{display:none}
+    #answerArea{grid-area:answer;min-width:0;width:100%;gap:8px}
+    #answerArea input{min-width:0;width:auto;flex:1}
+    .underbar{flex-direction:column;align-items:stretch;min-height:0;margin-top:7px;gap:0}
+    .underbar #status{display:none}
+    .underbar #feedback{font-size:12px}
+    .underbar #feedback:empty{display:none}
+    .settings-grid{gap:12px}
+  }
+  /* Short landscape phone: avoid the huge portrait canvas height. */
+  @media (max-height:510px) and (max-width:960px){
+    .shell{max-width:630px}
+    .stage{display:flex;flex-direction:column}
+    .bead-area{order:0;min-height:0;height:350px}
+    #abacus{height:100%}
+    .readout{order:1;min-height:0;padding:11px 14px;border:0}
+    .readout .step,.readout .tips{display:none!important}
+  }
+  @media(max-width:390px){
+    .shell{padding-left:9px;padding-right:9px}
+    .brand{font-size:15px;letter-spacing:.11em}
+    .settings-grid{grid-template-columns:1fr}
+    .full{grid-column:auto}
+    .modal-body{padding:17px}
+    .modal-head{padding:17px}
+    .mode-option{padding:7px 6px}
+    #start,#stop{min-width:77px;padding:9px 10px}
+  }
+  /* A rotated phone (or a shallow desktop window) is NOT a tall phone.
+     Use the horizontal area: abacus at left; prompt, transport and modes
+     at right. Size the abacus from available viewport HEIGHT so no controls
+     are pushed below the fold. CSS media queries update on every resize. */
+  @media (orientation:landscape) and (max-height:600px) and (min-width:560px){
+    .shell{
+      width:100%;max-width:none;height:100dvh;min-height:0;
+      padding:8px max(11px,env(safe-area-inset-right))
+              max(8px,env(safe-area-inset-bottom)) max(11px,env(safe-area-inset-left));
+      display:grid;
+      grid-template-columns:minmax(0,1.18fr) minmax(285px,.82fr);
+      grid-template-rows:40px auto minmax(0,1fr) auto;
+      gap:8px 12px;align-content:stretch;
+    }
+    .header{grid-column:1/-1;grid-row:1;margin:0;min-height:0;gap:8px}
+    .brand{font-size:15px;letter-spacing:.16em}
+    .brand-caption{display:none}
+    .header-actions{gap:9px}
+    .today{font-size:0}
+    .today strong{font-size:11px}
+    .icon-button{width:36px;height:36px;border-radius:10px}
+    /* Promote the stage's children into the shell grid. */
+    .stage{display:contents}
+    .bead-area{
+      grid-column:1;grid-row:2/5;order:initial;
+      width:100%;height:100%;min-height:0;max-height:none;
+      border:1px solid #263034;border-radius:15px;
+      overflow:hidden;align-self:stretch;
+    }
+    #abacus{display:block;width:100%;height:100%}
+    .readout{
+      grid-column:2;grid-row:2;order:initial;
+      min-height:0;min-width:0;padding:8px 12px 9px;
+      border:1px solid #263034;border-radius:13px;
+      background:linear-gradient(115deg,#0d1215,#0a0d0f);
+    }
+    .eyebrow{font-size:9px;min-height:0;line-height:1.2}
+    .operation{min-height:40px;margin:2px 0 0;font-size:clamp(32px,6.8vh,43px);line-height:1.15}
+    .readout .step,.readout .tips{display:none!important}
+    .total{min-height:0;margin-top:2px;font-size:11px}
+    .total:empty{display:none}
+    .toolbar{
+      grid-column:2;grid-row:3;align-self:start;
+      display:grid;grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:'navigation navigation' 'mode action' 'answer answer';
+      gap:7px;margin:0;min-width:0;
+    }
+    .playback-controls{
+      grid-area:navigation;display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:2px;min-width:0;width:100%;padding:4px;border-radius:12px;
+    }
+    .playback-controls .transport,
+    .playback-controls .transport.main-transport{
+      width:100%;min-width:0;height:35px;min-height:35px;border-radius:7px;
+    }
+    .playback-controls svg{width:18px;height:18px}
+    .playback-controls #stepCounter{
+      grid-column:1/-1;min-width:0;line-height:1.25;
+      padding:3px 2px 1px;border:0;border-top:1px solid #303a3d;
+      text-align:center;font-size:10px;
+    }
+    .mode-picker{grid-area:mode;justify-content:stretch;gap:2px;padding:3px;min-width:0}
+    .mode-option{flex:1;min-width:0;min-height:37px;padding:6px 7px;font-size:12px}
+    .mode-option span{display:none}
+    #start,#stop{
+      grid-area:action;justify-self:end;
+      min-width:78px;min-height:42px;padding:8px 10px;font-size:12px;
+    }
+    #start{font-size:0}
+    #start::after{content:'Start';font-size:12px}
+    #start:disabled{display:none}
+    #answerArea{grid-area:answer;min-width:0;width:100%;gap:6px}
+    #answerArea input{min-width:0;width:auto;flex:1;min-height:37px}
+    #answerArea .btn{min-height:37px;padding:7px 12px}
+    .underbar{
+      grid-column:2;grid-row:4;align-self:end;
+      flex-direction:column;align-items:stretch;
+      min-height:0;margin:0;gap:0;
+    }
+    .underbar #status{display:none}
+    .underbar #feedback{font-size:11px}
+    .underbar #feedback:empty{display:none}
+    .settings-grid{gap:12px}
+  }
+  /* Narrower landscape handsets still need comfortable touch targets. */
+  @media (orientation:landscape) and (max-height:600px) and (min-width:560px) and (max-width:720px){
+    .shell{grid-template-columns:minmax(0,1fr) minmax(258px,.95fr);gap:6px 8px}
+    .readout{padding:6px 8px}
+    .toolbar{gap:5px}
+    .playback-controls .transport,.playback-controls .transport.main-transport{
+      height:34px;min-height:34px;
+    }
+    .mode-option{padding:5px 4px}
+  }
+  /* Tablet portrait: give the abacus its own wide canvas and put the
+     arithmetic prompt and controls below it, rather than squeezing a
+     desktop sidebar and toolbar into a narrow iPad screen. */
+  @media (orientation:portrait) and (min-width:761px) and (max-width:1150px) and (min-height:680px){
+    .shell{
+      width:100%;max-width:950px;
+      padding:clamp(18px,2.4vw,28px) clamp(18px,2.7vw,30px) 28px;
+    }
+    .header{margin-bottom:16px}
+    .brand{font-size:19px}
+    .brand-caption{font-size:10px}
+    .stage{display:flex;flex-direction:column;border-radius:19px}
+    .bead-area{
+      order:0;flex:0 0 auto;min-height:0;
+      height:clamp(470px,59dvh,700px);
+      border-bottom:1px solid #263034;
+    }
+    #abacus{height:100%;width:100%}
+    .readout{
+      order:1;min-width:0;min-height:104px;
+      padding:12px 22px 13px;border-right:0;
+      background:linear-gradient(180deg,#0b0f11,#0d1417);
+    }
+    .eyebrow{font-size:10px;min-height:0;line-height:1.4}
+    .operation{font-size:clamp(43px,6vw,62px);min-height:0;line-height:1.1;margin:5px 0 0}
+    .step{font-size:11px;min-height:0;max-width:none;margin-top:3px}
+    .tips{display:none!important}
+    .total{min-height:0;font-size:12px;margin-top:2px}
+    .total:empty{display:none}
+    .toolbar{
+      display:grid;grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:'navigation navigation' 'mode action' 'answer answer';
+      align-items:center;gap:11px 14px;margin-top:14px;
+    }
+    .playback-controls{
+      grid-area:navigation;width:100%;min-width:0;
+      display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;padding:6px;
+    }
+    .playback-controls .transport,.playback-controls .transport.main-transport{
+      width:100%;min-width:0;height:49px;min-height:49px;
+    }
+    .playback-controls svg{width:23px;height:23px}
+    .playback-controls #stepCounter{
+      grid-column:1/-1;min-width:0;padding:6px 3px 2px;
+      border-left:0;border-top:1px solid #303a3d;
+      font-size:12px;line-height:1.3;text-align:center;
+    }
+    .mode-picker{grid-area:mode;justify-content:stretch;min-width:0;padding:4px}
+    .mode-option{flex:1;min-height:47px;font-size:13px}
+    .mode-option span{font-size:10px}
+    #start,#stop{grid-area:action;justify-self:end;min-height:54px;min-width:145px}
+    #start:disabled{display:none}
+    #answerArea{grid-area:answer;min-width:0;width:100%}
+    #answerArea input{flex:1;width:auto;min-width:0}
+    .underbar{margin-top:8px;min-height:0;font-size:12px}
+    .underbar #status{display:none}
+  }
+  /* Tablet landscape and medium-sized desktop windows: treat screen height
+     as a first-class constraint. Beads get the left panel; prompt, playback,
+     and mode controls form a comfortable stack on the right. Neither panel
+     relies on the narrow single-row desktop toolbar. */
+  @media (orientation:landscape) and (min-width:960px) and (max-width:1500px) and (min-height:650px) and (max-height:1100px){
+    .shell{
+      width:100%;max-width:1490px;height:100dvh;min-height:0;
+      padding:clamp(15px,2.1vw,28px) clamp(17px,2.3vw,32px);
+      display:grid;
+      grid-template-columns:minmax(0,1.25fr) minmax(342px,.87fr);
+      grid-template-rows:48px minmax(0,1fr) auto auto auto minmax(0,1fr);
+      column-gap:clamp(16px,2vw,26px);row-gap:11px;
+      align-content:stretch;
+    }
+    .header{grid-column:1/-1;grid-row:1;margin:0;min-height:0}
+    .brand{font-size:19px}
+    .stage{display:contents}
+    .bead-area{
+      grid-column:1;grid-row:2/7;min-height:0;width:100%;height:100%;
+      border:1px solid #263034;border-radius:20px;overflow:hidden;
+    }
+    #abacus{width:100%;height:100%}
+    .readout{
+      grid-column:2;grid-row:3;min-width:0;min-height:155px;
+      border:1px solid #263034;border-radius:17px;
+      padding:20px 22px 17px;
+      background:linear-gradient(115deg,#0d1215,#0b0f11);
+    }
+    .eyebrow{font-size:11px;min-height:0}
+    .operation{font-size:clamp(48px,5.5vw,77px);min-height:0;margin:12px 0 6px;line-height:1.15}
+    .step{min-height:0;font-size:12px;max-width:none}
+    .tips{display:none!important}
+    .total{min-height:0;margin-top:7px}
+    .total:empty{display:none}
+    .toolbar{
+      grid-column:2;grid-row:4;min-width:0;margin:0;
+      display:grid;grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:'navigation navigation' 'mode action' 'answer answer';
+      gap:11px 9px;align-items:center;
+    }
+    .playback-controls{
+      grid-area:navigation;width:100%;min-width:0;
+      display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:4px;padding:5px;
+    }
+    .playback-controls .transport,.playback-controls .transport.main-transport{
+      width:100%;min-width:0;height:48px;min-height:48px;
+    }
+    .playback-controls svg{width:22px;height:22px}
+    .playback-controls #stepCounter{
+      grid-column:1/-1;border:0;border-top:1px solid #303a3d;
+      min-width:0;padding:5px 2px 2px;text-align:center;font-size:11px;
+    }
+    .mode-picker{grid-area:mode;min-width:0;justify-content:stretch;padding:4px}
+    .mode-option{min-height:47px;flex:1;min-width:0;padding:6px 7px}
+    .mode-option span{font-size:10px}
+    #start,#stop{grid-area:action;min-width:96px;min-height:52px;justify-self:end;padding:10px 13px}
+    #start{font-size:0}
+    #start::after{content:'Start';font-size:13px}
+    #start:disabled{display:none}
+    #answerArea{grid-area:answer;min-width:0;width:100%}
+    #answerArea input{flex:1;min-width:0;width:auto}
+    .underbar{
+      grid-column:2;grid-row:5;min-height:0;margin:0;
+      font-size:12px;justify-content:center;align-items:center;
+    }
+    .underbar #status{display:none}
+    .underbar #feedback:empty{display:none}
+  }
+  /* The smaller iPads need a few more pixels for their controls. */
+  @media (orientation:landscape) and (min-width:960px) and (max-width:1120px) and (min-height:650px){
+    .shell{grid-template-columns:minmax(0,1.13fr) minmax(330px,1fr);column-gap:15px}
+    .readout{padding:14px 15px;min-height:125px}
+    .operation{font-size:clamp(41px,5vw,59px);margin:7px 0 3px}
+    .toolbar{gap:8px}
+    .mode-option span{display:none}
+    #start,#stop{min-width:82px}
+  }
+  /* Installed iOS web apps may extend beneath the status bar/home indicator.
+     These are additive: all original portrait/landscape/tablet breakpoints remain. */
+  @media (display-mode:standalone) {
+    .shell {padding-top:max(27px,env(safe-area-inset-top,0px));
+      padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
+  }
+  @media (display-mode:standalone) and (max-width:760px) {
+    .shell {padding-top:max(12px,env(safe-area-inset-top,0px))}
+  }
+  @media (display-mode:standalone) and (orientation:landscape) and (max-height:600px) and (min-width:560px) {
+    .shell {padding-top:max(8px,env(safe-area-inset-top,0px));
+      padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+  }
+  /* keep the installed application anchored to the screen rather than
+     rubber-banding the page. The Settings dialog is its own scroll region. */
+  @media (display-mode:standalone) and (pointer:coarse) {
+    html,body{
+      height:100%;height:100dvh;
+      overflow:hidden;
+      overscroll-behavior:none;
+    }
+    .shell{max-height:100dvh;}
+  }
+  html,body{overscroll-behavior-y:none;}
+  dialog{
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  /* The iOS standalone app uses a translucent status bar. Native dialog
+     centering can otherwise put its title underneath the time/Dynamic Island. */
+  @media (display-mode:standalone) {
+    dialog{
+      position:fixed;
+      top:max(24px,calc(env(safe-area-inset-top,0px) + 12px));
+      bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 10px));
+      max-height:calc(100dvh - max(24px,calc(env(safe-area-inset-top,0px) + 12px)) - max(20px,calc(env(safe-area-inset-bottom,0px) + 10px)));
+      margin:auto;
+    }
+    .modal-head{
+      position:sticky;top:0;z-index:2;
+      background:#13191d;
+    }
+    .shell{
+      padding-top:max(30px,calc(env(safe-area-inset-top,0px) + 10px));
+    }
+  }
+  @media (display-mode:standalone) and (max-width:760px) and (orientation:portrait) {
+    dialog{
+      top:max(66px,calc(env(safe-area-inset-top,0px) + 12px));
+      max-height:calc(100dvh - max(66px,calc(env(safe-area-inset-top,0px) + 12px)) - max(20px,calc(env(safe-area-inset-bottom,0px) + 10px)));
+    }
+    /* Keep the toolbar accessible even on a shorter iPhone screen. */
+    .bead-area{
+      height:clamp(210px,calc(100dvh - 320px - max(60px,env(safe-area-inset-top,0px)) - max(25px,env(safe-area-inset-bottom,0px))),485px);
+    }
+  }
+
+  @media(prefers-reduced-motion:reduce){.icon-button{transition:none}}
+
+  /* Touchscreen app: keep panning/scrolling, disallow page pinch and double-tap zoom. */
+  @media (pointer: coarse) {
+    html, body, body * { touch-action: pan-x pan-y; }
+    /* iOS focuses and magnifies form fields with text smaller than 16px. */
+    input:not([type="checkbox"]), select, textarea { font-size: 16px; }
+  }
+  /* fit the real, currently visible browser/PWA viewport at all sizes.
+     The page itself never scrolls. The Settings dialog remains independently scrollable.
+     Dynamic viewport units follow Safari browser bars and orientation changes. */
+  html, body {
+    width:100%; height:100%; height:100dvh;
+    min-height:0; overflow:hidden; overscroll-behavior:none;
+  }
+  body {position:fixed;inset:0;}
+  .shell {
+    height:100%; min-height:0; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .header,.toolbar,.underbar {flex:0 0 auto;}
+  .stage {flex:1 1 0; min-height:0;}
+  .bead-area {min-height:0; height:100%;}
+  #abacus {height:100%;}
+  /* Enough space for the status bar, without the extra blank band above the brand. */
+  @media (display-mode:standalone) and (orientation:portrait) and (max-width:760px) {
+    .shell {padding-top:max(22px,calc(env(safe-area-inset-top,0px) + 3px));}
+  }
+  /* Phone portrait: let the bead canvas consume only available free space.
+     The prompt and controls remain visible even while Safari's bars expand. */
+  @media (max-width:760px) and (orientation:portrait) {
+    .shell {height:100%;}
+    .stage {display:flex; flex-direction:column; flex:1 1 0; min-height:0;}
+    .bead-area {flex:1 1 0; min-height:0; max-height:none; height:auto;}
+    .readout {flex:0 0 auto; padding:9px 14px 10px;}
+    .header {margin-bottom:9px;}
+    .toolbar {margin-top:9px;}
+    .underbar {margin-top:5px;}
+  }
+  /* Tablet portrait gets the same free-space behavior, with its larger controls. */
+  @media (orientation:portrait) and (min-width:761px) and (max-width:1150px) and (min-height:680px) {
+    .shell {display:flex; flex-direction:column; height:100%;}
+    .stage {display:flex; flex-direction:column; flex:1 1 0; min-height:0;}
+    .bead-area {flex:1 1 0; height:auto; min-height:0; max-height:none;}
+    .readout {flex:0 0 auto;}
+  }
+  /* Keep the established two-panel landscape compositions. */
+  @media (orientation:landscape) and (max-height:600px) and (min-width:560px) {
+    .shell {display:grid; height:100%;}
+    .bead-area {flex:none; min-height:0; height:100%;}
+  }
+  @media (orientation:landscape) and (min-width:960px) and (max-width:1500px) and (min-height:650px) and (max-height:1100px) {
+    .shell {display:grid; height:100%;}
+    .bead-area {flex:none; min-height:0; height:100%;}
+  }
+  /* Very short browser windows: keep playback visible instead of forcing scroll. */
+  @media (min-width:761px) and (max-height:640px) {
+    .shell {padding-top:10px; padding-bottom:10px;}
+    .header {margin-bottom:9px;}
+    .toolbar {margin-top:9px;}
+    .readout .tips {display:none;}
+  }
+  /* Native Settings scrolls; the underlying page never moves, in Safari too. */
+  @media not (display-mode:standalone) {
+    dialog {max-height:calc(100dvh - 38px);}
+  }
+
+  /* Standalone iOS viewport fix.
+     A solid status bar + viewport-fit=auto allow iOS to reserve the clock/Dynamic
+     Island area itself. This avoids the iOS 26 translucent-status-bar blur and
+     its shortened dynamic viewport / unused strip at the bottom. */
+  @media (display-mode:standalone) {
+    html, body { height:100dvh; }
+    .shell { height:100%; max-height:none;
+      padding-top:max(14px, env(safe-area-inset-top, 0px));
+      padding-bottom:max(14px, env(safe-area-inset-bottom, 0px));
+    }
+    dialog {
+      top:max(12px, calc(env(safe-area-inset-top, 0px) + 8px));
+      bottom:max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+      max-height:calc(100dvh - max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) - max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px)));
+    }
+  }
+  @media (display-mode:standalone) and (orientation:portrait) and (max-width:760px) {
+    .shell { padding-top:max(12px, env(safe-area-inset-top, 0px));
+      padding-bottom:max(16px, env(safe-area-inset-bottom, 0px));
+    }
+    dialog { top:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)); }
+  }
+
+  /* no page-wide vignette. Light mode is an alternate visual palette,
+     not a filter: both the abacus drawing and all controls have explicit contrast. */
+  html[data-theme="light"] {
+    color-scheme:light;
+    --bg:#f3f1eb;--surface:#fffefa;--border:#c6c4bb;
+    --gold:#8e622e;--muted:#596764;--text:#26312f;--mint:#18685f;
+  }
+  html[data-theme="light"] body {background:var(--bg);color:var(--text)}
+  html[data-theme="light"] .brand {color:#805b2d}
+  html[data-theme="light"] .brand-caption,
+  html[data-theme="light"] .today {color:#53615e}
+  html[data-theme="light"] .today strong {color:#25433e}
+  html[data-theme="light"] .icon-button {background:#fffefa;border-color:#c7c9c0;color:#42524c}
+  html[data-theme="light"] .icon-button:hover {background:#ece9e1}
+  html[data-theme="light"] .stage {background:#fffdf9;border-color:#c6c8bf;box-shadow:0 12px 35px rgba(59,60,49,.08)}
+  html[data-theme="light"] .readout {background:#fffefa;border-color:#d7d6cc;color:#26312f}
+  html[data-theme="light"] .bead-area {background:#f7f5ee;border-color:#c9c8bf}
+  html[data-theme="light"] .eyebrow,
+  html[data-theme="light"] .step,
+  html[data-theme="light"] .underbar,
+  html[data-theme="light"] .mode-option span {color:#62706c}
+  html[data-theme="light"] .total {color:#226b61}
+  html[data-theme="light"] .tips {border-color:#d5d5ce;color:#596663}
+  html[data-theme="light"] .tips b {color:#246f67}
+  html[data-theme="light"] .mode-picker {background:#e9ece6;border-color:#c9d0c9}
+  html[data-theme="light"] .mode-option {color:#53625d}
+  html[data-theme="light"] .mode-option[aria-pressed="true"] {background:#fffefa;border-color:#bdc9c0;color:#715024;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  html[data-theme="light"] .mode-option[aria-pressed="true"] span {color:#566760}
+  html[data-theme="light"] .mode-option:hover:not(:disabled):not([aria-pressed="true"]) {background:#f7f9f5}
+  html[data-theme="light"] .btn {background:#fffefa;border-color:#b7bfb7;color:#263b35}
+  html[data-theme="light"] .btn:hover:not(:disabled) {background:#edece6}
+  html[data-theme="light"] .btn.primary {background:#b5854f;border-color:#a77a4a;color:#fffefa}
+  html[data-theme="light"] .btn.primary:hover:not(:disabled) {background:#a3713e}
+  html[data-theme="light"] .btn.subtle {background:transparent;color:#52665f;border-color:#c6cdc6}
+  html[data-theme="light"] .playback-controls {background:#fffefa;border-color:#c6cec7}
+  html[data-theme="light"] .playback-controls .transport {color:#354640}
+  html[data-theme="light"] .playback-controls .transport.main-transport {background:#efe6d8;color:#8c602e}
+  html[data-theme="light"] .playback-controls .transport:hover:not(:disabled) {background:#eeeae0}
+  html[data-theme="light"] .playback-controls .transport[aria-label^="Previous operation"],
+  html[data-theme="light"] .playback-controls .transport[aria-label^="Next operation"] {color:#26766b}
+  html[data-theme="light"] .playback-controls #stepCounter {color:#596a64;border-color:#d2d5cb}
+  html[data-theme="light"] .answer input {background:#fffefa;color:#26312f;border-color:#b8c4b9}
+  html[data-theme="light"] dialog {background:#fffefa;border-color:#bfc9c3;color:#26312f;box-shadow:0 25px 100px rgba(31,42,38,.22)}
+  html[data-theme="light"] dialog::backdrop {background:rgba(33,44,39,.44)}
+  html[data-theme="light"] .modal-head {background:#fffefa;border-color:#d5dad4}
+  html[data-theme="light"] .close {color:#4e5f57}
+  html[data-theme="light"] .close:hover {background:#e9ede7}
+  html[data-theme="light"] .section-title {color:#865d30}
+  html[data-theme="light"] .field {color:#465952}
+  html[data-theme="light"] .field select,
+  html[data-theme="light"] .field input {background:#fffefa;color:#26312f;border-color:#b7c3ba}
+  html[data-theme="light"] .hint {color:#60716a}
+  html[data-theme="light"] .checkbox-line {color:#455952}
+  html[data-theme="light"] #voiceResult {color:#266f63}
+  html[data-theme="light"] .setting-divider {background:#d9ddd7}
+  html[data-theme="light"] .modal-foot {color:#53665c}
+  /* Keep the controls rendered (disabled) before and after a session so
+     the abacus height does not jump when Start is tapped. */
+  .playback-controls {visibility:visible}
+
+  /* Answer entry belongs to the existing number readout, not an extra
+     toolbar row. This preserves bead area height throughout answer entry. */
+  .operation-slot{position:relative;display:flex;align-items:center;justify-content:center;
+    width:100%;min-width:0;flex:0 0 auto;}
+  .readout.awaiting-answer .operation{visibility:hidden;}
+  #answerArea{
+    position:absolute;inset:0;z-index:2;min-width:0;width:100%;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    grid-area:auto; /* No longer participates in the toolbar grid. */
+  }
+  #answerArea input{
+    min-width:0;width:1px;flex:1 1 auto;max-width:265px;
+    min-height:43px;padding:7px 10px;font-size:16px;
+  }
+  #answerArea .btn{min-height:43px;min-width:0;padding:7px 10px;flex:0 0 auto;}
+  @media (max-width:760px){
+    #answerArea{gap:8px;padding:0 1px;}
+    #answerArea input{max-width:400px;}
+    #answerArea .btn{padding:8px 14px;}
+  }
+  /* Use an inset, consistent chevron instead of the native select
+     indicator, which can overflow rounded borders in desktop browsers. */
+  .field select{
+    -webkit-appearance:none;appearance:none;
+    padding-right:42px;
+    text-overflow:ellipsis;white-space:nowrap;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23a7b8b3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 7 5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-size:17px 17px;
+    background-position:right 14px center;
+  }
+  html[data-theme="light"] .field select{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2354685f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 7 5 5 5-5'/%3E%3C/svg%3E");
+  }
+  .field select:focus,.field select:focus-visible{
+    outline:none;box-shadow:inset 0 0 0 1px #c6a26b;
+  }
+
+  /* Native SELECT arrows are replaced by one centered, explicit SVG.
+     Clipping and a wrapper prevent icon overflow/double arrows on macOS. */
+  .field .select-frame {
+    display:block;position:relative;width:100%;min-width:0;
+    border:1px solid #3d4b50;border-radius:10px;
+    background:#0c1114;overflow:hidden;isolation:isolate;
+  }
+  .field .select-frame select,
+  html[data-theme="light"] .field .select-frame select {
+    display:block;box-sizing:border-box;width:100%;min-width:0;
+    -webkit-appearance:none!important;-moz-appearance:none!important;appearance:none!important;
+    background:transparent!important;background-image:none!important;
+    border:0!important;border-radius:0!important;
+    padding:9px 42px 9px 12px!important;min-height:43px;
+    outline:0!important;box-shadow:none!important;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    color:var(--text);cursor:pointer;
+  }
+  .field .select-frame select::-ms-expand {display:none;}
+  .field .select-arrow {
+    position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    display:block;width:18px;height:18px;fill:none;
+    stroke:#a7b8b3;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;
+    pointer-events:none;z-index:2;
+  }
+  .field .select-frame:focus-within {box-shadow:0 0 0 2px #c6a26b;}
+  html[data-theme="light"] .field .select-frame {
+    background:#fffefa;border-color:#b7c3ba;
+  }
+  html[data-theme="light"] .field .select-arrow {stroke:#53685f;}
+
+  /* The number/answer panel has fixed tracks. Swapping a number for
+     an input cannot change its height, the stage flex size, or canvas pixels. */
+  .operation-slot {flex-shrink:0;}
+  @media (max-width:760px) and (orientation:portrait) {
+    .readout {
+      height:116px!important;min-height:116px!important;max-height:116px!important;
+      flex:0 0 116px!important;box-sizing:border-box;
+      padding:8px 12px!important;overflow:hidden;
+      display:grid!important;grid-template-columns:minmax(0,1fr);
+      grid-template-rows:20px 62px 18px;gap:0;align-content:center;justify-items:center;
+    }
+    .readout .eyebrow {grid-column:1;grid-row:1;height:20px;line-height:20px;min-height:0;}
+    .readout .operation-slot {grid-column:1;grid-row:2;height:62px;min-height:62px;max-height:62px;align-self:center;}
+    .readout .operation {height:62px!important;min-height:62px!important;max-height:62px!important;margin:0!important;}
+    .readout .total {grid-column:1;grid-row:3;display:block!important;height:18px;min-height:18px;max-height:18px;line-height:18px;margin:0!important;}
+    .readout .step,.readout .tips {display:none!important;}
+    .underbar {height:22px;min-height:22px;max-height:22px;flex:0 0 22px!important;overflow:hidden;}
+  }
+  @media (orientation:portrait) and (min-width:761px) and (max-width:1150px) and (min-height:680px) {
+    .readout {height:141px!important;min-height:141px!important;max-height:141px!important;flex:0 0 141px!important;overflow:hidden;}
+    .readout .operation-slot {height:66px;min-height:66px;max-height:66px;}
+    .readout .operation{height:66px;min-height:66px!important;margin:0!important;}
+    .underbar {height:26px;min-height:26px;max-height:26px;overflow:hidden;}
+  }
+  @media (orientation:landscape) and (max-height:600px) and (min-width:560px) {
+    .readout{height:88px!important;min-height:88px!important;max-height:88px!important;overflow:hidden;}
+    .readout .operation-slot{height:40px;min-height:40px;max-height:40px;}
+    .readout .operation{height:40px;min-height:40px!important;margin:0!important;}
+    .readout .total{margin:0!important;min-height:0!important;}
+  }
+  @media (orientation:landscape) and (min-width:960px) and (max-width:1500px) and (min-height:650px) and (max-height:1100px) {
+    .readout{height:172px!important;min-height:172px!important;max-height:172px!important;overflow:hidden;}
+    .readout .operation-slot{height:78px;min-height:78px;max-height:78px;}
+    .readout .operation{height:78px;min-height:78px!important;margin:0!important;}
+  }
+</style>
+<script>
+/* Installed iOS 27+ only. Do not prioritize a stale Safari UA value
+   above the Safari 27 feature probe. User-agent OS strings are frozen on iOS. */
+(() => {
+  const ua=navigator.userAgent||'';
+  const ios=/iPhone|iPad|iPod/i.test(ua)||
+    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  const standalone=navigator.standalone===true ||
+    matchMedia('(display-mode: standalone)').matches;
+  const safari=Number(ua.match(/\bVersion\/(\d+)(?:\.|\b)/)?.[1]||0);
+  const os=Number(ua.match(/\b(?:iPhone )?OS (\d+)[_.]/)?.[1]||0);
+  // `appearance:base-select` was introduced in Safari 27; unlike the
+  // version reported by the user agent it indicates a feature really exists.
+  const feature=!!window.CSS?.supports?.('appearance','base-select');
+  const modern=(safari>=27 || os>=27 || feature);
+  let optIn=false;
+  try {optIn=localStorage.getItem('ghostBeadsGlassOptIn')==='yes'} catch(_){}
+  const eligible=!!(ios&&standalone);
+  window.ghostIOS27PWA=!!(eligible&&(modern||optIn));
+  window.ghostGlassInfo={eligible,ios,standalone,safari,os,feature,modern,optIn};
+  // React's genuine Liquid Glass layer is additive; original controls work
+  // if the library is missing or blocked. Normal Safari keeps classic UI.
+  window.ghostApplePWA=false;
+  document.documentElement.dataset.applePwa='false';
+  document.documentElement.dataset.ghostUi=window.ghostIOS27PWA?'ios27-glass':'classic';
+})();
+</script>
+</head>
+<body>
+<div id="statusBarBackdrop" aria-hidden="true"></div>
+<main class="shell">
+  <header class="header">
+    <div><div class="brand">GHOST BEADS</div><div class="brand-caption">DAILY MENTAL ABACUS</div></div>
+    <div class="header-actions">
+      <div id="stats" class="today">TODAY <strong>0 / 0</strong></div>
+      <button id="openSettings" class="icon-button" aria-label="Open settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.18,4.41 L9.72,2.47 L14.28,2.47 L14.82,4.41 L15.38,4.64 L17.13,3.65 L20.35,6.87 L19.36,8.62 L19.59,9.18 L21.53,9.72 L21.53,14.28 L19.59,14.82 L19.36,15.38 L20.35,17.13 L17.13,20.35 L15.38,19.36 L14.82,19.59 L14.28,21.53 L9.72,21.53 L9.18,19.59 L8.62,19.36 L6.87,20.35 L3.65,17.13 L4.64,15.38 L4.41,14.82 L2.47,14.28 L2.47,9.72 L4.41,9.18 L4.64,8.62 L3.65,6.87 L6.87,3.65 L8.62,4.64 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+      </button>
+      <div id="ghostGlassGear" class="ghost-glass-gear-mount"></div>
+    </div>
+  </header>
+  <div class="stage">
+    <section id="readout" class="readout" aria-label="Exercise">
+      <div id="ghostGlassReadoutSurface" class="gbglass-panel-mount" aria-hidden="true"></div>
+      <div id="phase" class="eyebrow">Ready to practice</div>
+      <div class="operation-slot">
+        <div id="operation" class="operation">—</div>
+        <div id="answerArea" class="answer hidden" role="group" aria-label="Enter your final answer">
+          <input id="answer" type="number" step="1" inputmode="numeric" placeholder="Your answer" aria-label="Your final answer" disabled>
+          <button id="check" class="btn" disabled>Check</button>
+          <span id="ghostGlassCheck" class="ghost-glass-check-mount"></span>
+        </div>
+      </div>
+      <div id="stepInfo" class="step">Choose a mode and start an exercise.</div>
+      <div id="total" class="total"></div>
+      <div id="tips" class="tips hidden"><b>Big friend</b> &nbsp;+10 −7<br><span style="font:12px/1.4 system-ui;color:#9ba4a0">One coordinated action per column</span></div>
+    </section>
+    <section class="bead-area" aria-label="Animated ghost abacus">
+      <div id="ghostGlassBeadSurface" class="gbglass-panel-mount" aria-hidden="true"></div>
+      <canvas id="abacus" role="img" aria-label="Soroban ghost beads, glowing when moved toward the separator"></canvas>
+    </section>
+  </div>
+  <div class="toolbar">
+    <div class="mode-picker" role="group" aria-label="Exercise mode">
+      <button id="practiceMode" class="mode-option" type="button" aria-pressed="true">Practice<span>Guided beads</span></button>
+      <button id="testMode" class="mode-option" type="button" aria-pressed="false">Test<span>Ghost beads only</span></button>
+    </div>
+    <button id="start" class="btn primary">Start practice</button>
+    <div id="playbackControls" class="playback-controls" role="group" aria-label="Exercise playback controls">
+      <button id="previousStep" class="transport" disabled title="Previous operation (spoken number)" aria-label="Previous operation (spoken number)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14M13 5 5 12l8 7ZM22 5l-8 7 8 7Z"/></svg></button>
+      <button id="previousMove" class="transport" disabled title="Previous hand move (across spoken numbers)" aria-label="Previous hand move (across spoken numbers)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5 8 12l11 7Z"/></svg></button>
+      <button id="pause" class="transport main-transport" disabled title="Pause" aria-label="Pause"><svg id="pauseIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg></button>
+      <button id="nextMove" class="transport" disabled title="Next hand move (across spoken numbers)" aria-label="Next hand move (across spoken numbers)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l11 7-11 7Z"/></svg></button>
+      <button id="nextStep" class="transport" disabled title="Next operation (spoken number)" aria-label="Next operation (spoken number)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v14M2 5l8 7-8 7ZM11 5l8 7-8 7Z"/></svg></button>
+      <button id="repeatStep" class="transport" disabled title="Repeat the current spoken number" aria-label="Repeat the current spoken number"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M19 12a8 8 0 1 0 0 4"/></svg></button>
+      <span id="stepCounter" aria-live="off">Controls ready</span>
+    </div>
+    <button id="stop" class="btn subtle hidden" disabled>Stop</button>
+    <div id="ghostGlassToolbar" class="ghost-glass-toolbar-mount"></div>
+  </div>
+  <div class="underbar" aria-live="polite"><span id="feedback"></span><span id="status">Select Practice for bead guidance or Test to calculate mentally. Voice options are in Settings.</span></div>
+</main>
+
+<dialog id="settingsDialog" aria-label="Practice settings">
+  <div class="modal-head"><h2>Settings</h2><button id="closeSettings" class="close" aria-label="Close settings">×</button></div>
+  <div class="modal-body">
+    <h3 class="section-title">Appearance</h3>
+    <div class="settings-grid">
+      <label class="field full">Color theme
+        <span class="select-frame"><select id="appearance">
+          <option value="system" selected>Match system</option>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span>
+      </label>
+    </div>
+    <p class="hint">System follows your device's Light or Dark appearance automatically, even while Ghost Beads is open.</p>
+    <div class="setting-divider" style="margin-top:20px"></div>
+    <h3 class="section-title">Voice</h3>
+    <div class="settings-grid">
+      <label class="field full" id="speechEngineField">Voice playback<span class="select-frame"><select id="speechEngine"><option value="system" selected>Original browser voice (Google US English preferred)</option><option value="bundled">Natural voice pack (offline)</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field full" id="systemVoiceField">Browser voice<span class="select-frame"><select id="voice"><option value="auto">Google US English (en-US) · preferred</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field">Voice speed<span class="select-frame"><select id="rate"><option value="0.7">Slow</option><option value="1.0" selected>Normal</option><option value="1.1">Fast</option><option value="1.3">Very fast</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+    </div>
+    <p class="hint" id="iosVoiceNotice" hidden>On iPhone and iPad, Ghost Beads uses the offline voice pack only.</p>
+    <p class="hint" id="speechSettingsHint">Desktop uses the original browser voice by default (Google US English when available). You can switch to the natural offline voice pack. iPhone and iPad always use the voice pack.</p>
+    <label class="checkbox-line"><input id="practiceVoice" type="checkbox" checked> Speak numbers in Practice mode</label>
+    <label class="checkbox-line"><input id="testVoiceEnabled" type="checkbox" checked> Speak numbers in Test mode</label>
+    <p class="hint">Voice can be switched on or off separately for each mode. With voice off, numbers are shown on screen before advancing.</p>
+    <div class="speech-row"><button class="btn" id="testVoice" type="button">▶ Test voice</button><span id="voiceResult" aria-live="polite"></span></div>
+    <p class="hint">If sound is missing, check your media volume and Bluetooth/AirPlay output. On iOS, the offline voice pack is used automatically.</p>
+    <audio id="iosAudioPrimer" preload="auto" playsinline src="./audio/audio-ready.mp3" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1"></audio>
+    <div class="setting-divider"></div>
+    <h3 class="section-title">Exercise settings</h3>
+    <div class="settings-grid">
+      <label class="field">Number of digits<span class="select-frame"><select id="digits"><option value="1">1 digit</option><option value="2" selected>2 digits</option><option value="3">3 digits</option><option value="4">4 digits</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field">Type of arithmetic<span class="select-frame"><select id="operationMode"><option value="mixed" selected>Addition + subtraction</option><option value="add">Addition only</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field">Numbers per exercise (including the start)<span class="select-frame"><select id="steps"><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field">Bead animation<span class="select-frame"><select id="animationSpeed"><option value="500">Quick</option><option value="850" selected>Smooth</option><option value="1250">Slow</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field full">Movement feel<span class="select-frame"><select id="motionFeel">
+        <option value="flick" selected>Quick flick · fast launch, crisp contact</option>
+        <option value="glide">Soft glide · original smooth motion</option>
+      </select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field full">Movement detail<span class="select-frame"><select id="moveDetail">
+        <option value="1">Level 1 · Full composition (five + lower beads)</option>
+        <option value="2" selected>Level 2 · One move per column (original)</option>
+        <option value="3">Level 3 · One move per operand digit</option>
+        <option value="4">Level 4 · One move per spoken number</option>
+      </select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+      <label class="field full">Pause between spoken numbers<span class="select-frame"><select id="delay"><option value="250">0.25 seconds</option><option value="750" selected>0.75 seconds</option><option value="1500">1.5 seconds</option><option value="3000">3 seconds</option></select><svg class="select-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></label>
+    </div>
+    <p id="stepsNote" class="hint" aria-live="polite"></p>
+    <p id="moveDetailHint" class="hint" aria-live="polite"></p>
+    <p class="hint">Quick flick launches beads almost immediately, reaches travel speed in the first few frames, and stops sharply on contact. The remainder of each move is a still hold. Soft glide retains the older gentler transition.</p>
+    <p class="hint">Smaller pauses separate parts of one exchange; longer pauses separate operand digits. Movement detail changes immediately, including during a spoken operation. Moves already underway finish normally.</p>
+    <label class="checkbox-line"><input id="showTotal" type="checkbox"> Show the running total during Practice mode</label>
+    <p class="hint">Test mode shows only the ghost-bead outlines and the announced numbers. It never animates or lights beads, or shows the running total.</p>
+    <div class="setting-divider" style="margin-top:24px"></div>
+    <h3 class="section-title">Install & offline</h3>
+    <p id="pwaStatus" class="hint" aria-live="polite">Checking offline availability…</p>
+    <p class="hint">On iPhone or iPad, open the HTTPS website in Safari, choose Share → Add to Home Screen, enable “Open as Web App”, then tap Add. Open the home-screen icon once while online to save the app for offline use.</p>
+    <p class="hint">Your exercises and progress are saved on this device. The voice pack works offline after its audio files have been cached. The original browser voice is available on desktops and depends on your installed voices.</p>
+    <div class="modal-foot"><button id="doneSettings" class="btn primary">Done</button></div>
+  </div>
+</dialog>
+
+
+<script>
+(()=>{'use strict';
+  const $=id=>document.getElementById(id);
+  const canvas=$('abacus'), ctx=canvas.getContext('2d');
+  const speech=window.speechSynthesis||null;
+  // Safari on iOS is especially sensitive to cancel() immediately before speak().
+  // Keep the first utterance inside the Start/Test Voice tap without cancelling
+  // an empty queue; this also helps preserve WebKit's user-activation permission.
+  const isIOS=/iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  // Allow the spoken number to finish, then give it a short beat before moving.
+  const AFTER_SPEECH_PAUSE_MS=260;
+  // Give the learner a moment to take in a selected bead state before
+  // automatically speaking or continuing from a navigation command.
+  const NAVIGATION_PAUSE_MS=500;
+  // The individual rod actions of one carry/borrow are a single *place-value
+  // idea* (for example, removing 8 by -10 then +2). Keep them close together.
+  // Wait longer when moving to the next digit of the announced operand.
+  function movePauseMs(nextIsSameTerm, animationMs){
+    return nextIsSameTerm
+      ? Math.min(110, Math.max(60, animationMs*.10))
+      : Math.min(480, Math.max(320, animationMs*.50));
+  }
+  const FINAL_MOVE_SETTLE_MS=90;
+  const state={value:0,animationStart:0,animationMs:850,motionTravelMs:850,motionFeel:'flick',columns:2,motionFrom:null,motionTo:null,highlightColumn:-1,highlightSign:0,
+    active:false,paused:false,waiting:false,answered:false,hasExercise:false,steps:[],stepIndex:0,currentStep:0,moveCursor:0,movePhase:'idle',pendingStep:false,pendingMove:false,initialValue:0,finalValue:45,detailLevel:2,movePlanOverrides:new Map(),sessionId:0,
+    timer:null,timerDue:0,timerCb:null,remainingMs:0,
+    speechWatchdog:null,speechWatchdogCb:null,speechWatchdogDue:0,speechWatchdogRemaining:0,
+    currentUtterance:null,nextQueued:false,pausedAt:0,mode:'ready',selectedMode:'practice'};
+
+  function dateKey(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+  let progress={};try{progress=JSON.parse(localStorage.getItem('ghostBeadsProgressV1')||'{}')||{}}catch{}
+  function updateStats(){const p=progress[dateKey()]||{done:0,correct:0};$('stats').innerHTML='TODAY <strong>'+p.correct+' / '+p.done+'</strong>';$('stats').title=p.correct+' correct out of '+p.done+' exercises today'}
+  function addResult(ok){const key=dateKey(),p=progress[key]||{done:0,correct:0};p.done++;if(ok)p.correct++;progress[key]=p;try{localStorage.setItem('ghostBeadsProgressV1',JSON.stringify(progress))}catch{}updateStats()}
+  function status(msg){$('status').textContent=msg}
+  function feedback(msg,good){$('feedback').textContent=msg;$('feedback').style.color=good?'var(--mint)':'var(--gold)'}
+  const settingsIds=['appearance','digits','operationMode','steps','animationSpeed','delay','rate','voice','showTotal','moveDetail','motionFeel','practiceVoice','testVoiceEnabled','speechEngine'];
+  const storageKey='ghostBeadsSettingsV4';
+  function saveSettings(){const item={};for(const id of settingsIds){const el=$(id);item[id]=el.type==='checkbox'?el.checked:el.value}saved=item;try{localStorage.setItem(storageKey,JSON.stringify(item))}catch{}}
+  let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||localStorage.getItem('ghostBeadsSettingsV3')||localStorage.getItem('ghostBeadsSettingsV2')||'{}')||{}}catch{}
+  for(const id of settingsIds){const el=$(id);if(id==='voice')continue;if(saved[id]!==undefined){if(el.type==='checkbox')el.checked=Boolean(saved[id]);else if([...el.options].some(o=>o.value===String(saved[id])))el.value=String(saved[id])}}
+  window.applyGhostAppearance($('appearance').value);
+  // Older settings saved "auto" as the bundled voice. Desktop
+  // defaults to the original browser voice, unless the user explicitly
+  // selected the voice pack. iOS ALWAYS uses the voice pack, even if old
+  // settings saved "system". This also handles iPadOS desktop user agents.
+  if(isIOS){
+    $('speechEngine').value='bundled';
+    $('speechEngineField').style.display='none';
+    $('systemVoiceField').style.display='none';
+    $('iosVoiceNotice').hidden=false;
+    $('speechSettingsHint').textContent='The local voice pack is the only playback source on iPhone and iPad. You can still turn voice off in Practice or Test mode.';
+  }else{
+    if(!['system','bundled'].includes($('speechEngine').value))$('speechEngine').value='system';
+  }
+  // A 1-digit soroban can only hold 9. Starting at >=1, at most eight
+  // strictly positive additions are possible, so 10/15/20 are disabled.
+  function syncOperationChoices(){
+    const cap=10**Number($('digits').value)-1;
+    const additionOnly=$('operationMode').value==='add';
+    // The selector counts every announced number, including the opening value.
+    // With positive additions, a 1-digit soroban can show at most 9 such numbers.
+    const maxSteps=cap;
+    const select=$('steps');
+    for(const option of select.options){
+      const unavailable=additionOnly&&Number(option.value)>maxSteps;
+      option.disabled=unavailable;
+      option.title=unavailable?'Exceeds the display limit for strictly positive additions':'';
+    }
+    if(select.selectedOptions[0]?.disabled){
+      const valid=[...select.options].filter(o=>!o.disabled);
+      const requested=Number(select.value);
+      const nearest=valid.filter(o=>Number(o.value)<=requested).at(-1)||valid[0];
+      select.value=nearest.value;
+    }
+    $('stepsNote').textContent=additionOnly
+      ?'Addition-only exercises never exceed '+cap.toLocaleString('en-US')+'. '+
+        (cap===9?'A 1-digit exercise can contain at most 9 spoken numbers (one starting number and up to eight additions). Longer options are disabled.':
+        'Longer exercises use smaller additions when needed to stay in range.')
+      :'The count includes the starting number. Addition and subtraction keep each total between 0 and '+cap.toLocaleString('en-US')+'.';
+  }
+  syncOperationChoices();
+  try{if(localStorage.getItem('ghostBeadsSelectedMode')==='test')state.selectedMode='test'}catch{}
+  function setSessionMode(mode){
+    if(!['practice','test'].includes(mode)||state.active||state.waiting)return;
+    state.selectedMode=mode;
+    try{localStorage.setItem('ghostBeadsSelectedMode',mode)}catch{}
+    $('practiceMode').setAttribute('aria-pressed',String(mode==='practice'));
+    $('testMode').setAttribute('aria-pressed',String(mode==='test'));
+    $('start').textContent=mode==='test'?'Start test':'Start practice';
+    if(!state.hasExercise){
+      $('phase').textContent=mode==='test'?'Ready to test':'Ready to practice';
+      $('stepInfo').textContent=mode==='test'?'Solve each number mentally; the beads stay unlit.':'Watch the beads move as you calculate.';
+    }
+    status(mode==='test'?'Test mode selected · no bead movements or highlights.':'Practice mode selected · bead guidance enabled.');
+  }
+  $('practiceMode').addEventListener('click',()=>setSessionMode('practice'));
+  $('testMode').addEventListener('click',()=>setSessionMode('test'));
+  setSessionMode(state.selectedMode);
+  function voiceEnabledForCurrentMode(){
+    return state.mode==='test'?$('testVoiceEnabled').checked:$('practiceVoice').checked;
+  }
+  function updateMoveDetailHint(){
+    const hints={
+      1:'Level 1: show separate five-bead and lower-bead actions whenever both change. Set 47 as +40, +5, +2; compute 34 + 22 as +5, −3 in tens, then in ones.',
+      2:'Level 2: one coordinated hand move on each affected column. Carries and borrows remain separate.',
+      3:'Level 3: one move for each nonzero digit of the spoken operand, including its carry or borrow.',
+      4:'Level 4: one continuous move from the previous total straight to the result of the spoken number.'
+    };
+    $('moveDetailHint').textContent=hints[Number($('moveDetail').value)]+
+      (state.hasExercise?' Changes apply to the current exercise immediately.':'');
+  }
+  updateMoveDetailHint();
+  for(const id of settingsIds)$(id).addEventListener('change',()=>{
+    if(id==='digits'||id==='operationMode')syncOperationChoices();
+    saveSettings();
+    if(id==='appearance')window.applyGhostAppearance($('appearance').value);
+    if(id==='showTotal')updateTotal();
+    if(id==='moveDetail'){applyDetailLevelImmediately(Number($('moveDetail').value));updateMoveDetailHint();}
+  });
+
+  const dialog=$('settingsDialog');
+  let sheetCloseTimer=null;
+  function clearSheetDrag(){
+    if(sheetCloseTimer){clearTimeout(sheetCloseTimer);sheetCloseTimer=null;}
+    dialog.classList.remove('sheet-dragging');
+    dialog.style.transition='';dialog.style.transform='';dialog.style.opacity='';
+  }
+  function openSettings(){
+    if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+    if(window.ghostApplePWA){
+      clearSheetDrag();
+      dialog.querySelector('.modal-body').scrollTop=0;
+      // showModal() automatically focuses the first button (the X).
+      // Focus the heading instead, without a visible blue ring.
+      const title=$('settingsTitle');
+      if(title)try{title.focus({preventScroll:true})}catch(_){title.focus()}
+    }
+  }
+  function closeSettings(){
+    clearSheetDrag();
+    if(typeof dialog.close==='function'&&dialog.open)dialog.close();
+    else dialog.removeAttribute('open');
+  }
+  if(window.ghostApplePWA){
+    const header=dialog.querySelector('.modal-head');
+    const handle=$('settingsDragHandle');
+    let gesture=null;
+    const canDrag=()=>window.matchMedia('(max-width:640px)').matches;
+    function onDown(e){
+      if(!canDrag()||!dialog.open||(e.pointerType==='mouse'&&e.button!==0))return;
+      if(e.target.closest('button,input,select,a'))return;
+      if(e.isPrimary===false)return;
+      gesture={id:e.pointerId,at:e.clientY,last:e.clientY,start:performance.now(),dy:0};
+      try{header.setPointerCapture(e.pointerId)}catch(_){}
+      dialog.classList.add('sheet-dragging');
+      dialog.style.transition='none';
+    }
+    function onMove(e){
+      if(!gesture||e.pointerId!==gesture.id)return;
+      const dy=Math.max(0,e.clientY-gesture.at);
+      gesture.dy=dy;gesture.last=e.clientY;
+      dialog.style.transform=`translate3d(0,${dy}px,0)`;
+    }
+    function onEnd(e){
+      if(!gesture||e.pointerId!==gesture.id)return;
+      const g=gesture;gesture=null;
+      dialog.classList.remove('sheet-dragging');
+      const duration=Math.max(1,performance.now()-g.start);
+      const speed=g.dy/duration;
+      const dismiss=g.dy>115 || (g.dy>42&&speed>.55);
+      const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      dialog.style.transition=reduceMotion?'none':'transform 180ms cubic-bezier(.24,.75,.3,1)';
+      if(dismiss){
+        dialog.style.transform='translate3d(0,105%,0)';
+        sheetCloseTimer=setTimeout(()=>{sheetCloseTimer=null;closeSettings()},reduceMotion?0:185);
+      }else{
+        dialog.style.transform='translate3d(0,0,0)';
+        sheetCloseTimer=setTimeout(()=>{sheetCloseTimer=null;clearSheetDrag()},reduceMotion?0:185);
+      }
+    }
+    function onCancel(e){
+      if(!gesture||e.pointerId!==gesture.id)return;
+      gesture=null;clearSheetDrag();
+    }
+    header.addEventListener('pointerdown',onDown);
+    header.addEventListener('pointermove',onMove);
+    header.addEventListener('pointerup',onEnd);
+    header.addEventListener('pointercancel',onCancel);
+    handle?.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();closeSettings()}
+    });
+    dialog.addEventListener('close',()=>{gesture=null;clearSheetDrag()});
+  }
+  $('openSettings').addEventListener('click',openSettings);
+  $('closeSettings').addEventListener('click',closeSettings);
+  $('doneSettings').addEventListener('click',closeSettings);
+  dialog.addEventListener('click',e=>{if(e.target===dialog)closeSettings()});
+
+  let availableVoices=[];
+  function voiceKey(v){return v.name+'|'+v.lang}
+  function populateVoices(){if(!speech)return;const oldChoice=$('voice').value;
+    availableVoices=speech.getVoices();
+    const select=$('voice');select.innerHTML='';
+    const def=document.createElement('option');def.value='auto';def.textContent='Google US English (en-US) · preferred';select.appendChild(def);
+    const sorted=availableVoices.slice().sort((a,b)=>{
+      const score=v=>/google us english/i.test(v.name)?0:/^en-us$/i.test(v.lang)?1:/^en/i.test(v.lang)?2:3;
+      return score(a)-score(b)||a.name.localeCompare(b.name);
+    });
+    for(const v of sorted){const option=document.createElement('option');option.value=voiceKey(v);option.textContent=v.name+' ('+v.lang+')';select.appendChild(option)}
+    const requested=oldChoice!=='auto'?oldChoice:(saved.voice||'auto');
+    select.value=[...select.options].some(o=>o.value===requested)?requested:'auto';
+    updateVoiceMessage();
+  }
+  function chooseVoice(){if(!availableVoices.length&&speech)availableVoices=speech.getVoices();
+    const selected=$('voice').value;
+    if(selected!=='auto')return availableVoices.find(v=>voiceKey(v)===selected)||null;
+    // This path is desktop-only. iOS is always forced to bundled audio.
+    return availableVoices.find(v=>/google us english/i.test(v.name)&&/^en-us$/i.test(v.lang))
+        ||availableVoices.find(v=>/google us english/i.test(v.name))
+        ||availableVoices.find(v=>/^en-us$/i.test(v.lang))
+        ||availableVoices.find(v=>/^en/i.test(v.lang))||null;
+  }
+  function selectedAudioEngine(){
+    // A stored desktop preference must never enable browser synthesis on iOS.
+    return isIOS||$('speechEngine').value==='bundled'?'bundled':'system';
+  }
+  let voiceInfo={type:'basic',name:'Basic offline English'};
+  async function refreshVoiceInfo(){try{const response=await fetch('./audio/voice-info.json');if(response.ok)voiceInfo=await response.json()}catch{}updateVoiceMessage()}
+  function updateVoiceMessage(){
+    const usingPack=selectedAudioEngine()==='bundled';
+    $('systemVoiceField').style.display=usingPack?'none':'';
+    if(usingPack){
+      $('voiceResult').textContent=voiceInfo.type==='neural'?'Kokoro: '+voiceInfo.name+' · available offline':'Offline voice available';
+      $('voice').disabled=true;
+      return;
+    }
+    $('voice').disabled=false;
+    if(!speech){$('voiceResult').textContent='Browser speech unavailable. Select the voice pack instead.';return}
+    const v=chooseVoice();$('voiceResult').textContent=v?'Browser voice: '+v.name+' ('+v.lang+')':'Browser default voice';
+  }
+  $('voice').addEventListener('change',updateVoiceMessage);
+  $('speechEngine').addEventListener('change',()=>{updateVoiceMessage();cancelSpeech()});
+  if(speech&&!isIOS){populateVoices();if('onvoiceschanged' in speech)speech.addEventListener?.('voiceschanged',populateVoices)}
+  else updateVoiceMessage();
+  refreshVoiceInfo();
+
+  // The original offline pack covers 0..99 and arithmetic words.
+  // The optional full-number pack holds one complete recording per 100..9999
+  // number, with compressed, individually decodable MP3 clips in small shards.
+  // Web Audio is used instead of speechSynthesis on iOS; a direct tap unlocks
+  // its AudioContext, and scheduled buffer slices keep each number seamless.
+  const bundled={ctx:null,buffer:null,map:null,loading:null,nodes:[],playing:false,token:0};
+  // iOS sometimes only routes Web Audio to the speaker *after* a native
+  // HTMLAudioElement.play() has been initiated by a real user gesture.
+  // Use a short, quiet, local chime as part of Start / Test voice / playback taps
+  // so users do not have to find the diagnostic media player's Play button.
+  const iosPrimer=$('iosAudioPrimer');
+  let iosMediaPrimed=false, iosPrimePromise=null;
+  function primeIOSMediaFromTap(){
+    if(!isIOS||iosMediaPrimed)return iosPrimePromise||Promise.resolve();
+    try{
+      iosPrimer.currentTime=0;
+      const requested=iosPrimer.play(); // MUST remain inside the click handler.
+      iosPrimePromise=Promise.resolve(requested).then(()=>{iosMediaPrimed=true}).catch(err=>{
+        iosMediaPrimed=false;
+        status('iOS audio activation was blocked: '+(err?.message||'unknown error'));
+      });
+    }catch(err){iosMediaPrimed=false;status('iOS audio activation failed: '+err.message);iosPrimePromise=Promise.resolve()}
+    return iosPrimePromise;
+  }
+  function unlockBundledAudio(){
+    const Constructor=window.AudioContext||window.webkitAudioContext;
+    if(!Constructor)return null;
+    try{
+      if(!bundled.ctx)bundled.ctx=new Constructor();
+      if(bundled.ctx.state==='suspended'||bundled.ctx.state==='interrupted')
+        bundled.ctx.resume().catch(()=>{}); // Trigger during the user gesture.
+      return bundled.ctx;
+    }catch(err){status('Audio initialization failed: '+err.message);return null}
+  }
+  function prepareSpeechOnTap(){
+    if(selectedAudioEngine()==='bundled'){
+      primeIOSMediaFromTap();
+      unlockBundledAudio();
+      // Fetch and decode can be asynchronous, but native-media play() and
+      // AudioContext.resume() have both been requested synchronously on tap.
+      loadBundledSpeech().catch(()=>{});
+    }
+  }
+  document.addEventListener('visibilitychange',()=>{
+    // Returning from the background can interrupt iOS' audio session.
+    // Refresh it on the next deliberate user interaction (never autoplay).
+    if(isIOS&&document.visibilityState==='visible')iosMediaPrimed=false;
+  });
+  function loadBundledSpeech(){
+    if(bundled.loading)return bundled.loading;
+    bundled.loading=(async()=>{
+      const [mapResponse,infoResponse]=await Promise.all([
+        fetch('./audio/speech-map.json'),fetch('./audio/voice-info.json')
+      ]);
+      if(!mapResponse.ok)throw Error('Speech map could not be loaded ('+mapResponse.status+').');
+      const info=infoResponse.ok?await infoResponse.json():{type:'basic',asset:'speech-pack.mp3'};
+      const file=/^speech-pack\.(wav|mp3)$/.test(info.asset||'')?info.asset:'speech-pack.mp3';
+      const soundResponse=await fetch('./audio/'+file);
+      if(!soundResponse.ok)throw Error('Offline voice file could not be loaded ('+soundResponse.status+').');
+      voiceInfo=info;updateVoiceMessage();
+      const map=await mapResponse.json();const arr=await soundResponse.arrayBuffer();
+      const ctx=bundled.ctx||unlockBundledAudio();
+      if(!ctx)throw Error('Web Audio is not supported here.');
+      const audio=await ctx.decodeAudioData(arr);
+      bundled.map=map;bundled.buffer=audio;
+    })().catch(err=>{bundled.loading=null;throw err});
+    return bundled.loading;
+  }
+  function numberSegments(n){
+    n=Math.floor(Number(n));if(n<0||n>9999)throw Error('Number out of range');
+    if(n===0)return ['0'];
+    const parts=[];
+    if(n>=1000){parts.push(String(Math.floor(n/1000)),'thousand');n%=1000}
+    if(n>=100){parts.push(String(Math.floor(n/100)),'hundred');n%=100}
+    if(n>0)parts.push(String(n));
+    return parts;
+  }
+  function spokenSegments(text){
+    text=String(text).trim().toLowerCase();
+    if(/^\d{1,4}$/.test(text))return numberSegments(Number(text));
+    const match=/^(plus|minus)\s+(\d{1,4})$/.exec(text);
+    if(match)return [match[1],...numberSegments(Number(match[2]))];
+    return ['test'];
+  }
+  // Full Kokoro recordings use independent MP3 clips packed into binary shards;
+  // decode only the number requested, keeping mobile memory usage bounded.
+  const wholeNumbers={index:null,loading:null,files:new Map(),sounds:new Map()};
+  async function loadWholeNumberIndex(){
+    if(wholeNumbers.loading)return wholeNumbers.loading;
+    wholeNumbers.loading=(async()=>{
+      try{
+        const r=await fetch('./audio/number-pack-map.json');
+        if(!r.ok)return null; // Previous voice packs remain backward-compatible.
+        const index=await r.json();
+        if(index.format!=='mp3-shards-v1'||!Array.isArray(index.shards))return null;
+        wholeNumbers.index=index;
+        return index;
+      }catch{return null}
+    })();
+    return wholeNumbers.loading;
+  }
+  async function wholeNumberSound(n,ctx){
+    if(n<100||n>9999)return null;
+    const cacheKey=String(n);
+    if(wholeNumbers.sounds.has(cacheKey))return wholeNumbers.sounds.get(cacheKey);
+    const index=await loadWholeNumberIndex();
+    if(!index||n>index.max)return null;
+    const entry=index.shards.find(sh=>n>=sh.min&&n<=sh.max);
+    if(!entry)return null;
+    let bytes=wholeNumbers.files.get(entry.file);
+    if(!bytes){
+      const response=await fetch('./audio/'+entry.file);
+      if(!response.ok)throw Error('Full number audio missing: '+n);
+      bytes=await response.arrayBuffer();
+      wholeNumbers.files.set(entry.file,bytes);
+      // Keep at most two compressed shards in RAM. The service worker caches all.
+      if(wholeNumbers.files.size>2)wholeNumbers.files.delete(wholeNumbers.files.keys().next().value);
+    }
+    const i=n-entry.min;
+    const start=entry.offsets[i],end=entry.offsets[i+1];
+    if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start||end>bytes.byteLength)
+      throw Error('Invalid full number audio index for '+n);
+    const clip=bytes.slice(start,end);
+    const sound=await ctx.decodeAudioData(clip);
+    wholeNumbers.sounds.set(cacheKey,sound);
+    if(wholeNumbers.sounds.size>18)wholeNumbers.sounds.delete(wholeNumbers.sounds.keys().next().value);
+    return sound;
+  }
+  async function audioPieces(text,ctx){
+    const match=/^(?:(plus|minus)\s+)?(\d{1,4})$/.exec(String(text).trim().toLowerCase());
+    if(match&&Number(match[2])>=100){
+      let full=null;
+      try{full=await wholeNumberSound(Number(match[2]),ctx)}catch(err){
+        console.warn('Full number audio unavailable; reverting to original voice segments.',err);
+      }
+      if(full){
+        const pieces=[];
+        if(match[1])pieces.push({kind:'sprite',key:match[1]});
+        pieces.push({kind:'whole',buffer:full});
+        return pieces;
+      }
+    }
+    return spokenSegments(text).map(key=>({kind:'sprite',key}));
+  }
+  function stopBundledSpeech(){
+    bundled.token++;bundled.playing=false;
+    for(const source of bundled.nodes){try{source.onended=null;source.stop()}catch{}}
+    bundled.nodes=[];
+  }
+  function speakBundled(text,done,onStart){
+    const ctx=unlockBundledAudio();
+    if(!ctx){onStart?.();done?.(false);return}
+    stopBundledSpeech();
+    const token=bundled.token;
+    status('Loading bundled speech…');
+    loadBundledSpeech().then(async()=>{
+      if(token!==bundled.token)return;
+      // Don't schedule any buffer until the iOS native media activation has
+      // begun. The embedded player used to do this manually.
+      if(isIOS&&iosPrimePromise)await iosPrimePromise;
+      if(token!==bundled.token)return;
+      if(ctx.state!=='running'){
+        // Some iOS versions report "interrupted" after returning to a PWA.
+        await Promise.race([
+          ctx.resume(),
+          new Promise((_,reject)=>setTimeout(()=>reject(Error('iOS audio remains blocked. Tap Test voice or Start again.')),1200))
+        ]);
+      }
+      if(ctx.state!=='running')throw Error('Audio context did not start. Tap Test voice or Start again.');
+      const pieces=await audioPieces(text,ctx);
+      if(token!==bundled.token)return;
+      const rate=Number($('rate').value)||0.9;
+      let when=ctx.currentTime+0.055;
+      let last=null;
+      for(const piece of pieces){
+        const source=ctx.createBufferSource();
+        let duration;
+        if(piece.kind==='whole'){
+          source.buffer=piece.buffer;
+          duration=piece.buffer.duration;
+        }else{
+          const data=bundled.map[piece.key];
+          if(!data)throw Error('Audio segment missing: '+piece.key);
+          source.buffer=bundled.buffer;
+          duration=data.duration;
+        }
+        source.playbackRate.value=rate;
+        source.connect(ctx.destination);
+        if(piece.kind==='whole')source.start(when);
+        else source.start(when,bundled.map[piece.key].offset,duration);
+        bundled.nodes.push(source);last=source;
+        // Tight transition: no extra pause between a sign and a full numeral.
+        when+=duration/rate+(piece.kind==='whole'?0:0.010);
+      }
+      bundled.playing=true;
+      onStart?.();
+      if(last)last.onended=()=>{
+        if(token!==bundled.token)return;
+        bundled.playing=false;bundled.nodes=[];
+        done?.(true);
+      };
+      if(state.paused)ctx.suspend().catch(()=>{});
+      status('Playing offline English audio…');
+    }).catch(err=>{
+      if(token!==bundled.token)return;
+      bundled.playing=false;bundled.nodes=[];
+      status('Bundled audio error: '+err.message);
+      $('voiceResult').textContent='Audio error: '+err.message;
+      done?.(false);
+    });
+  }
+
+  function clearSpeechWatchdog(){clearTimeout(state.speechWatchdog);state.speechWatchdog=null;state.speechWatchdogCb=null;state.speechWatchdogRemaining=0}
+  function armSpeechWatchdog(cb,ms){
+    clearSpeechWatchdog();state.speechWatchdogCb=cb;state.speechWatchdogRemaining=ms;
+    if(state.paused)return;
+    state.speechWatchdogDue=performance.now()+ms;
+    state.speechWatchdog=setTimeout(()=>{state.speechWatchdog=null;const fn=state.speechWatchdogCb;state.speechWatchdogCb=null;fn?.()},ms);
+  }
+  function cancelSpeech(){clearSpeechWatchdog();
+    stopBundledSpeech();
+    const hadUtterance=!!state.currentUtterance;
+    if(hadUtterance){state.currentUtterance.onend=null;state.currentUtterance.onerror=null;state.currentUtterance.onstart=null}
+    // DO NOT cancel an idle synthesis engine. Cancelling immediately before
+    // speak() can make the next utterance silently disappear on iOS Safari.
+    if(speech&&hadUtterance){
+      try{speech.cancel()}catch{}
+    }
+    state.currentUtterance=null;
+  }
+  function speak(text,done,onStart){
+    if(selectedAudioEngine()==='bundled'){
+      // Cancel any old system-voice utterance before switching engines.
+      if(state.currentUtterance)cancelSpeech();
+      speakBundled(text,done,onStart);
+      return;
+    }
+    // Most operations begin after the previous utterance's onend event. There
+    // is no old speech to interrupt, so skip cancel() altogether.
+    if(state.currentUtterance)cancelSpeech();
+    else clearSpeechWatchdog();
+    if(!speech||!window.SpeechSynthesisUtterance){status('Speech is unavailable in this browser.');onStart?.();armTimer(()=>done?.(false),700);return}
+    let complete=false,started=false;
+    const begin=()=>{if(started)return;started=true;if(typeof onStart==='function')onStart()};
+    const finish=(ok=true)=>{if(complete)return;begin();complete=true;clearSpeechWatchdog();state.currentUtterance=null;if(typeof done==='function')done(ok)};
+    const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=Number($('rate').value);u.volume=1;u.pitch=1;
+    const voice=chooseVoice();if(voice){u.voice=voice;u.lang=voice.lang}
+    u.onstart=()=>{begin();if(state.paused){try{speech?.pause()}catch{}}if(state.active)status('Speaking '+text+'…')};
+    u.onend=finish;
+    u.onerror=ev=>{status('Voice issue ('+(ev.error||'unknown')+'). Try another voice in Settings.');finish(false)};
+    state.currentUtterance=u;
+    armSpeechWatchdog(()=>{
+      status('Speech did not finish. Check browser audio or try another voice.');
+      finish(false);
+    },Math.max(7500,text.length*450));
+    try{speech.speak(u)}catch(err){status('Speech could not start: '+err.message);finish(false)}
+  }
+  $('testVoice').addEventListener('click',()=>{
+    if(state.active){$('voiceResult').textContent='Stop the exercise before testing a voice.';return}
+    prepareSpeechOnTap(); // iOS playback permission is tied to this tap.
+    const engine=selectedAudioEngine();
+    $('voiceResult').textContent=engine==='bundled'?'Loading offline voice audio…':'Requesting system speech…';
+    speak(engine==='bundled'?'plus 1886':'Ghost Beads audio is working. You should hear this on your device.',ok=>{
+      $('voiceResult').textContent=ok
+        ?'Playback completed. If silent, check device volume and audio output.'
+        :(engine==='bundled'
+          ?'Voice pack failed. Check that its files are installed and cached.'
+          :'Browser voice failed. Try another browser voice or select the voice pack.');
+    },()=>{$('voiceResult').textContent=engine==='bundled'?'Playing offline voice audio…':'System speech started. Can you hear it?';});
+  });
+
+  function resizeCanvas(){const b=canvas.getBoundingClientRect(),scale=Math.min(2,window.devicePixelRatio||1);
+    canvas.width=Math.round(b.width*scale);canvas.height=Math.round(b.height*scale);ctx.setTransform(scale,0,0,scale,0,0)}
+  if(window.ResizeObserver)new ResizeObserver(resizeCanvas).observe(canvas);
+  else window.addEventListener('resize',resizeCanvas);
+  resizeCanvas();
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const clamp01=t=>Math.max(0,Math.min(1,t));
+  // Fast, finger-driven flick. Avoid CSS-style ease-in: it leaves the bead
+  // almost stationary at the beginning and makes the action feel mechanical.
+  // Instead give it a substantial initial velocity and a VERY short push
+  // (about 25-35 ms at normal pace), followed by travel at constant speed.
+  // At contact, velocity stops instantly: no ease-out, overshoot or bounce.
+  const softEase=t=>{t=clamp01(t);return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2};
+  function flickEase(t){
+    t=clamp01(t);
+    const push=0.11, initialVelocity=0.72;
+    // Normalized so position and velocity are continuous and position(1)=1.
+    const cruiseVelocity=(1-initialVelocity*push/2)/(1-push/2);
+    const accel=(cruiseVelocity-initialVelocity)/push;
+    if(t<push)return initialVelocity*t+accel*t*t/2;
+    const pushed=push*(initialVelocity+cruiseVelocity)/2;
+    return Math.min(1,pushed+cruiseVelocity*(t-push));
+  }
+  // The selected animation speed still controls the interval for each hand
+  // move; shorter physical travel leaves a clear, stationary contact hold.
+  function travelDuration(slotMs,feel){
+    return feel==='flick'?Math.min(360,Math.max(160,slotMs*.34)):slotMs;
+  }
+  function motionClock(now){return (state.paused?state.pausedAt:now)-state.animationStart}
+  function movementProgress(now){
+    const u=clamp01(motionClock(now)/Math.max(1,state.motionTravelMs));
+    return state.motionFeel==='flick'?flickEase(u):softEase(u);
+  }
+  function contactGlow(now){
+    if(state.motionFeel!=='flick')return 0;
+    const elapsed=motionClock(now)-state.motionTravelMs;
+    // A quick glint at contact without any positional overshoot.
+    return elapsed<0||elapsed>105?0:Math.pow(1-elapsed/105,2);
+  }
+  const digitsOf=(n,count)=>Array.from({length:count},(_,i)=>Math.floor(Math.max(0,n)/10**(count-i-1))%10);
+  const isActive=(d,i)=>i===0?d>=5:i<=d%5;
+  const encoded=(n,count)=>digitsOf(n,count).map(d=>Array.from({length:5},(_,i)=>Number(isActive(d,i))));
+  function frameAt(now){
+    if(!state.motionFrom||!state.motionTo||state.motionFrom.length!==state.columns)
+      return encoded(state.value,state.columns);
+    const t=movementProgress(now);
+    // All beads within a rod move together; no artificial ripple. A carry
+    // and its complementary removal are separate coordinated rod actions.
+    return state.motionTo.map((column,j)=>column.map((dest,i)=>lerp(state.motionFrom[j][i],dest,t)));
+  }
+  function line(x1,y1,x2,y2,color,width=1){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+  function glowLine(y,w,intensity){
+    if(document.documentElement.dataset.theme==='light'){
+      const grad=ctx.createLinearGradient(0,y-7,0,y+7);
+      grad.addColorStop(0,'rgba(91,105,100,0)');
+      grad.addColorStop(.44,'rgba(91,105,100,'+(intensity*.09)+')');
+      grad.addColorStop(.5,'rgba(71,84,80,'+(intensity*.24)+')');
+      grad.addColorStop(.56,'rgba(91,105,100,'+(intensity*.09)+')');
+      grad.addColorStop(1,'rgba(91,105,100,0)');
+      ctx.fillStyle=grad;ctx.fillRect(0,y-7,w,14);
+      ctx.strokeStyle='rgba(85,103,97,'+(intensity*.49)+')';
+      ctx.lineWidth=.95;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+      return;
+    }
+    const grad=ctx.createLinearGradient(0,y-9,0,y+9);
+    grad.addColorStop(0,'rgba(177,183,177,0)');
+    grad.addColorStop(.43,'rgba(177,183,177,'+(intensity*.23)+')');
+    grad.addColorStop(.5,'rgba(220,224,210,'+(intensity*.57)+')');
+    grad.addColorStop(.57,'rgba(177,183,177,'+(intensity*.20)+')');
+    grad.addColorStop(1,'rgba(177,183,177,0)');
+    ctx.fillStyle=grad;ctx.fillRect(0,y-9,w,18);
+    const hz=ctx.createLinearGradient(0,0,w,0);
+    hz.addColorStop(0,'rgba(163,176,172,'+(intensity*.16)+')');
+    hz.addColorStop(.15,'rgba(196,202,195,'+(intensity*.47)+')');
+    hz.addColorStop(.5,'rgba(213,221,209,'+(intensity*.59)+')');
+    hz.addColorStop(.85,'rgba(196,202,195,'+(intensity*.47)+')');
+    hz.addColorStop(1,'rgba(163,176,172,'+(intensity*.16)+')');
+    ctx.strokeStyle=hz;ctx.lineWidth=.85;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+  }
+  function drawBead(x,y,bw,bh,activity,tint=0,subtraction=false,impact=0,contactDirection=0){
+    // Active beads stay illuminated at rest. Glow changes only as beads move
+    // toward/away from the divider: no reset, disappearance, or hard cut.
+    const alpha=clamp01(activity);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x-bw*.20,y-bh/2);ctx.lineTo(x+bw*.20,y-bh/2);
+    ctx.lineTo(x+bw*.50,y);ctx.lineTo(x+bw*.20,y+bh/2);
+    ctx.lineTo(x-bw*.20,y+bh/2);ctx.lineTo(x-bw*.50,y);ctx.closePath();
+    if(document.documentElement.dataset.theme==='light'){
+      ctx.shadowColor=subtraction&&tint>0
+        ?'rgba(192,75,64,'+(tint*.25)+')'
+        :'rgba(157,99,38,'+(alpha*.25+tint*.15+impact*.20)+')';
+      ctx.shadowBlur=alpha*9+tint*5+impact*5;
+      ctx.fillStyle='rgba(181,131,67,'+(.014+alpha*.24)+')';
+      ctx.strokeStyle=subtraction&&tint>0
+        ?'rgba(178,66,53,'+(.47+tint*.32)+')'
+        :'rgba('+(Math.round(73+alpha*86))+','+(Math.round(84+alpha*25))+','+(Math.round(79-alpha*35))+','+(.30+alpha*.65)+')';
+      ctx.lineWidth=1.1+alpha*.70+impact*.25;ctx.fill();ctx.stroke();
+      ctx.shadowBlur=0;
+      line(x-bw*.46,y,x+bw*.46,y,'rgba(89,85,71,'+(.14+alpha*.34)+')',.8+alpha*.3);
+      if(impact>0&&contactDirection!==0){
+        const contactY=y+contactDirection*bh*.5;
+        ctx.strokeStyle=subtraction?'rgba(167,64,52,'+impact*.75+')':'rgba(156,98,33,'+impact*.75+')';
+        ctx.lineWidth=.8+impact*.9;ctx.beginPath();ctx.moveTo(x-bw*.18,contactY);ctx.lineTo(x+bw*.18,contactY);ctx.stroke();
+      }
+      ctx.restore();return;
+    }
+    ctx.shadowColor=subtraction&&tint>0?'rgba(255,120,112,'+(tint*.78)+')':'rgba(255,205,135,'+(alpha*.56+tint*.22+impact*.23)+')';ctx.shadowBlur=alpha*19+tint*9+impact*7;
+    ctx.fillStyle='rgba('+(Math.round(14+alpha*74))+','+(Math.round(17+alpha*55))+','+(Math.round(20+alpha*37))+','+(0.18+alpha*.17)+')';
+    ctx.strokeStyle=subtraction&&tint>0 ? 'rgba(244,145,130,'+(.48+tint*.40)+')':'rgba('+(Math.round(78+alpha*170))+','+(Math.round(88+alpha*125))+','+(Math.round(90+alpha*68))+','+(.34+alpha*.54)+')';
+    ctx.lineWidth=1.0+alpha*.90+impact*.35;ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;
+    line(x-bw*.46,y,x+bw*.46,y,'rgba(175,166,147,'+(.09+alpha*.52)+')',.8+alpha*.35);
+    if(impact>0&&contactDirection!==0){
+      // A very short light at the contact edge implies a firm physical stop.
+      // The bead does not overshoot, compress its position, or rebound.
+      const contactY=y+contactDirection*bh*.50;
+      ctx.save();ctx.shadowColor='rgba(255,212,147,.8)';ctx.shadowBlur=impact*9;
+      ctx.strokeStyle=subtraction
+        ?'rgba(255,150,130,'+(impact*.72)+')'
+        :'rgba(255,224,163,'+(impact*.72)+')';
+      ctx.lineWidth=.7+impact*1.05;
+      ctx.beginPath();ctx.moveTo(x-bw*.18,contactY);ctx.lineTo(x+bw*.18,contactY);ctx.stroke();ctx.restore();
+    }
+    ctx.restore();
+  }
+  function draw(now){
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    if(w<20||h<20){requestAnimationFrame(draw);return}
+    ctx.clearRect(0,0,w,h);
+    const count=state.columns;
+    // Dimensions derive from the uploaded ghost-bead reference.
+    const topRail=.072*h,bottomRail=.925*h,barTop=.281*h,barBottom=.338*h,barMiddle=(barTop+barBottom)/2;
+    const beadH=Math.min(.114*h,(w-28)/count/1.90*.84);
+    const beadW=Math.min(.222*h,(w-30)/count*.84);
+    const pitch=Math.min(beadW*1.145,(w-30)/count);
+    const xs=Array.from({length:count},(_,i)=>w/2+(i-(count-1)/2)*pitch);
+    const microGap=Math.max(2.5,beadH*.075);
+    const upperActive=barTop-beadH/2-microGap;
+    const upperInactive=upperActive-beadH*.75;
+    const lowerActive=barBottom+beadH/2+microGap;
+    const lowerInactive=lowerActive+beadH*.72;
+    const lowerPitch=beadH+microGap;
+    const beadState=state.mode==='test'?encoded(0,count):frameAt(now);
+
+    const light=document.documentElement.dataset.theme==='light';
+    glowLine(topRail,w,light?.68:.29);
+    glowLine(bottomRail,w,light?.68:.39);
+    for(const x of xs)line(x,topRail,x,bottomRail,light?'rgba(89,104,97,.32)':'rgba(121,132,135,.23)',.9);
+    const band=ctx.createLinearGradient(0,barTop,0,barBottom);
+    if(light){
+      band.addColorStop(0,'rgba(127,140,132,.05)');band.addColorStop(.17,'rgba(117,129,124,.08)');
+      band.addColorStop(.5,'rgba(103,115,108,.10)');band.addColorStop(.83,'rgba(117,129,124,.08)');band.addColorStop(1,'rgba(127,140,132,.05)');
+    }else{
+      band.addColorStop(0,'rgba(135,143,142,.08)');band.addColorStop(.17,'rgba(40,46,48,.19)');
+      band.addColorStop(.5,'rgba(14,17,19,.31)');band.addColorStop(.83,'rgba(39,44,46,.21)');band.addColorStop(1,'rgba(152,159,153,.06)');
+    }
+    ctx.fillStyle=band;ctx.fillRect(0,barTop,w,barBottom-barTop);
+    glowLine(barTop,w,1.04);
+    glowLine(barBottom,w,.79);
+    xs.forEach((x,j)=>{
+      for(let i=0;i<5;i++){
+        const engagement=beadState[j][i];
+        const inactiveY=i===0?upperInactive:lowerInactive+(i-1)*lowerPitch;
+        const activeY=i===0?upperActive:lowerActive+(i-1)*lowerPitch;
+        const moving=state.mode!=='test'&&state.motionFrom&&state.motionTo&&state.motionFrom[j]
+          ? Math.abs(state.motionTo[j][i]-state.motionFrom[j][i]) : 0;
+        const elapsed=motionClock(now);
+        const fraction=clamp01(elapsed/Math.max(1,state.motionTravelMs));
+        const inFlight=elapsed>=0&&fraction<1;
+        const impact=moving*contactGlow(now);
+        const flightTint=inFlight?Math.sin(Math.PI*fraction)*.38:0;
+        const tint=(state.highlightColumn===j||state.highlightColumn===-2)
+          ?moving*flightTint+impact*.55:0;
+        // Upper beads engage downwards, lower beads engage upwards.
+        const direction=moving===0?0:i===0
+          ?Math.sign(state.motionTo[j][i]-state.motionFrom[j][i])
+          :-Math.sign(state.motionTo[j][i]-state.motionFrom[j][i]);
+        drawBead(x,lerp(inactiveY,activeY,engagement),beadW,beadH,engagement,
+          tint,state.highlightSign<0,impact,direction);
+      }
+    });
+    for(const x of xs){
+      ctx.save();ctx.shadowColor=light?'rgba(167,107,47,.50)':'rgba(255,205,126,.92)';ctx.shadowBlur=Math.max(7,13*h/750);
+      ctx.fillStyle=light?'rgba(153,104,45,.95)':'rgba(255,214,146,.94)';ctx.beginPath();ctx.arc(x,barMiddle,Math.max(1.8,3.2*h/750),0,Math.PI*2);ctx.fill();ctx.restore();
+      ctx.fillStyle=light?'rgba(241,216,153,.75)':'rgba(255,233,181,.65)';ctx.beginPath();ctx.arc(x,barMiddle,Math.max(1,1.4*h/750),0,Math.PI*2);ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  state.motionFrom=encoded(state.value,state.columns);
+  state.motionTo=encoded(state.value,state.columns);
+  state.animationStart=performance.now()-1000;
+  requestAnimationFrame(draw);
+  function updateTotal(){const t=$('total');if(state.mode==='test'){t.textContent='';return}if(state.waiting){t.textContent=$('showTotal').checked?'Final total · '+state.finalValue:' ';return}
+    t.textContent=$('showTotal').checked?'Total · '+state.value:'';}
+  function moveTo(n,instant=false,highlightColumn=-1,sign=0){
+    const now=performance.now();
+    const from=frameAt(now);
+    state.motionFrom=instant?encoded(n,state.columns):from;
+    state.motionTo=encoded(n,state.columns);
+    state.value=n;
+    state.animationStart=now;
+    state.animationMs=Number($('animationSpeed').value)||850;
+    state.motionFeel=$('motionFeel').value;
+    state.motionTravelMs=instant?1:travelDuration(state.animationMs,state.motionFeel);
+    state.highlightColumn=highlightColumn===-2 ? -2 : highlightColumn;
+    state.highlightSign=sign;
+    updateTotal();
+  }
+  // Four detail levels, all generated from the same arithmetic.  The
+  // grouping level affects only the animation, never the result.
+  //
+  // L1: split any change that involves BOTH the five-bead and lower beads,
+  //     including same-direction initial placement (0 -> 7: +5, +2)
+  //     and opposite-direction friends (3 -> 5: +5, -3).
+  // L2: one coordinated move per affected rod (legacy behavior).
+  // L3: all the rod changes belonging to one operand digit at once.
+  // L4: all changes belonging to the entire spoken number at once.
+  function humanMovePlan(initial,delta,columns,detailLevel=2){
+    const max=10**columns-1;
+    const level=Number(detailLevel);
+    if(!Number.isInteger(initial)||!Number.isInteger(delta)||
+       !Number.isInteger(columns)||columns<1||columns>4||
+       ![1,2,3,4].includes(level)||initial<0||initial>max||
+       initial+delta<0||initial+delta>max)
+      throw Error('Operation is outside the visible abacus');
+    if(delta===0)return [];
+    if(level===4)return [{value:initial+delta,column:-2,shift:delta,
+      label:(delta>0?'+':'−')+Math.abs(delta)+' · full number',
+      termId:0,termShift:delta,termPlace:0}];
+
+    let current=initial;
+    const moves=[];
+    const magnitude=Math.abs(delta),sign=Math.sign(delta);
+    let termId=0;
+    const colName=['ones','tens','hundreds','thousands'];
+    for(let place=columns-1;place>=0;place--){
+      const power=10**place;
+      const amount=Math.floor(magnitude/power)%10;
+      if(!amount)continue;
+      const termShift=sign*amount*power;
+      const destination=current+termShift;
+      if(destination<0||destination>max)throw Error('Place-value step outside the abacus');
+      const before=digitsOf(current,columns),after=digitsOf(destination,columns);
+      let intermediate=current;
+      for(let j=0;j<columns;j++){
+        const from=before[j],to=after[j];
+        if(from===to)continue;
+        const rodPower=10**(columns-j-1);
+        const rodShift=(to-from)*rodPower;
+        // Full composition (Level 1): the five-bead and lower beads are
+        // always distinct hand actions when both sets change. This includes
+        // *setting* digits from zero, e.g. 0 -> 7 = +5, +2, as well as
+        // five-friend exchanges such as 3 -> 5 = +5, -3.
+        // Other levels keep the single coordinated rod movement.
+        const upperShift=(Number(to>=5)-Number(from>=5))*5*rodPower;
+        const lowerShift=(to%5-from%5)*rodPower;
+        const parts=level===1&&upperShift!==0&&lowerShift!==0
+          ? [upperShift,lowerShift] : [rodShift];
+        for(let part=0;part<parts.length;part++){
+          const shift=parts[part];
+          intermediate+=shift;
+          if(intermediate<0||intermediate>max)throw Error('Intermediate move outside the abacus');
+          moves.push({value:intermediate,column:j,shift,
+            label:(shift>0?'+':'−')+(level===1?Math.abs(shift/rodPower):Math.abs(shift))+' · '+colName[columns-j-1]+
+                  (parts.length===2?' · '+(part===0?'five bead':'lower beads'):''),
+            from,to,termId,termShift,termPlace:place});
+        }
+      }
+      if(intermediate!==destination)throw Error('Incorrect carry or borrow');
+      current=destination;
+      termId++;
+    }
+    if(current!==initial+delta)throw Error('Operation plan does not balance');
+    if(level===3){
+      // Collapse each operand digit's carry or borrow across rods.  Grouping
+      // is based on arithmetic terms, not on how many beads were moved.
+      const grouped=[];
+      let fromValue=initial;
+      for(const move of moves){
+        const last=grouped[grouped.length-1];
+        if(last&&last.termId===move.termId){
+          last.value=move.value;
+          last.shift=last.value-fromValue;
+        }else{
+          if(last)fromValue=last.value;
+          grouped.push({value:move.value,column:-2,shift:move.value-fromValue,
+            label:(move.termShift>0?'+':'−')+Math.abs(move.termShift)+
+              ' · '+colName[move.termPlace],
+            termId:move.termId,termShift:move.termShift,termPlace:move.termPlace});
+        }
+      }
+      return grouped;
+    }
+    return moves;
+  }
+  // An exercise's arithmetic is immutable; only the grouping of its bead
+  // actions changes with Movement detail. When the user switches granularity
+  // mid-operation, the currently selected *bead value* must not jump.
+  //
+  // At ordinary boundaries we can remap the cursor directly into the new
+  // plan. If the user is partway through a five-friend composition, that value
+  // may not be a boundary in the coarser plan. In that case retain the
+  // performed prefix and regroup only the remaining atomic Level-1 actions.
+  function regroupRemainingAtoms(atoms,level,fromValue,finalValue){
+    if(!atoms.length)return [];
+    if(level===1)return atoms.map(m=>({...m}));
+    if(level===4)return [{value:finalValue,column:-2,shift:finalValue-fromValue,
+      label:'Complete remaining number',termId:atoms[0].termId,
+      termShift:finalValue-fromValue,termPlace:atoms[0].termPlace}];
+    const groups=[];
+    let startValue=fromValue;
+    for(const atom of atoms){
+      const last=groups[groups.length-1];
+      const same=last&&(level===3 ? last.termId===atom.termId
+        :last.termId===atom.termId&&last.column===atom.column);
+      if(same){
+        last.value=atom.value;
+        last.shift=atom.value-startValue;
+        if(level===2)last.label=(last.shift>=0?'+':'−')+Math.abs(last.shift)+
+          ' · '+['ones','tens','hundreds','thousands'][state.columns-last.column-1];
+      }else{
+        if(last)startValue=last.value;
+        const colName=['ones','tens','hundreds','thousands'];
+        groups.push({value:atom.value,column:level===3?-2:atom.column,
+          shift:atom.value-startValue,
+          label:level===3
+            ?(atom.termShift>=0?'+':'−')+Math.abs(atom.termShift)+' · '+colName[atom.termPlace]
+            :(atom.shift>=0?'+':'−')+Math.abs(atom.shift)+' · '+colName[state.columns-atom.column-1],
+          termId:atom.termId,termShift:atom.termShift,termPlace:atom.termPlace});
+      }
+    }
+    return groups;
+  }
+  function applyDetailLevelImmediately(newLevel){
+    if(![1,2,3,4].includes(newLevel)||newLevel===state.detailLevel)return;
+    if(!state.hasExercise){state.detailLevel=newLevel;return}
+    const index=state.currentStep;
+    const oldPlan=stepDescription(index).moves;
+    const oldCursor=Math.max(0,Math.min(state.moveCursor,oldPlan.length));
+    const currentValue=valueAtMove(index,oldCursor);
+    const before=valueBeforeStep(index);
+    const target=index===0?state.initialValue:state.steps[index-1].value;
+    const delta=target-before;
+    const atoms=humanMovePlan(before,delta,state.columns,1);
+    const newPlan=humanMovePlan(before,delta,state.columns,newLevel);
+
+    // The end value of every grouped move is a boundary in the atomic plan.
+    // If a number occurs more than once, choose the occurrence nearest the
+    // cursor's old arithmetic position (the earliest on a tie).
+    const oldFraction=oldPlan.length?oldCursor/oldPlan.length:0;
+    const atomicPositions=[before,...atoms.map(m=>m.value)];
+    const atAtom=atomicPositions.reduce((best,v,i)=>v!==currentValue?best:
+      (best<0||Math.abs(i/Math.max(1,atoms.length)-oldFraction)<
+        Math.abs(best/Math.max(1,atoms.length)-oldFraction)?i:best),-1);
+    const canonicalPositions=[before,...newPlan.map(m=>m.value)];
+    const direct=canonicalPositions.reduce((best,v,i)=>v!==currentValue?best:
+      (best<0||Math.abs(i/Math.max(1,newPlan.length)-oldFraction)<
+        Math.abs(best/Math.max(1,newPlan.length)-oldFraction)?i:best),-1);
+    let selectedPlan,cursor;
+    if(direct>=0){
+      selectedPlan=newPlan;cursor=direct;
+    }else{
+      // We have already performed part of a move that the new detail level
+      // would have grouped. Keep history navigable, but regroup the future.
+      const prefix=oldPlan.slice(0,oldCursor).map(m=>({...m}));
+      const tail=regroupRemainingAtoms(atoms.slice(atAtom),newLevel,currentValue,target);
+      selectedPlan=[...prefix,...tail];cursor=prefix.length;
+    }
+    state.detailLevel=newLevel;
+    state.movePlanOverrides.clear();
+    state.movePlanOverrides.set(index,selectedPlan);
+    state.moveCursor=cursor;
+    // Do not cancel speech, elapsed timers, or in-flight bead movement.
+    // The next timer callback reads the new plan and continues naturally.
+    updateButtons();
+    const finished=cursor===selectedPlan.length;
+    if(state.movePhase==='animating'){
+      $('stepInfo').textContent='Move '+cursor+' of '+selectedPlan.length+' · movement detail updated';
+    }else if(state.active&&state.movePhase!=='speaking'&&state.movePhase!=='lead'){
+      $('stepInfo').textContent=finished
+        ?'All '+selectedPlan.length+' hand moves completed'
+        :'Hand move '+cursor+' of '+selectedPlan.length+' · '+(cursor?selectedPlan[cursor-1].label:'before first move');
+    }
+    status('Movement detail set to Level '+newLevel+'. '+
+      (finished?'This number is complete.':'Remaining hand moves updated.'));
+  }
+  // The app has a single pause-aware timer for both bead moves and
+  // the interval before the next spoken arithmetic operation.
+  function armTimer(cb,ms){
+    clearTimeout(state.timer);state.timer=null;
+    state.timerCb=cb;state.remainingMs=Math.max(0,ms);
+    if(state.paused)return;
+    state.timerDue=performance.now()+state.remainingMs;
+    state.timer=setTimeout(()=>{
+      state.timer=null;const action=state.timerCb;state.timerCb=null;
+      if(action)action();
+    },state.remainingMs);
+  }
+  function valueAtMove(index,cursor){
+    const moves=stepDescription(index).moves;
+    if(cursor<0||cursor>moves.length)throw Error('Hand move outside this operation');
+    return cursor===0?valueBeforeStep(index):moves[cursor-1].value;
+  }
+  // The cursor counts hand moves whose DESTINATION is selected. The current
+  // animation, if any, is the last selected move (cursor - 1). This makes
+  // seeking to an intermediate state an exact operation on the abacus value.
+  function runMovesFromCursor(index,token){
+    if(!state.active||token!==state.sessionId)return;
+    if(state.paused){armTimer(()=>runMovesFromCursor(index,token),0);return}
+    const d=stepDescription(index),moves=d.moves;
+    if(state.moveCursor>=moves.length){
+      state.movePhase='between';
+      scheduleNext(token);
+      return;
+    }
+    const i=state.moveCursor;
+    const m=moves[i];
+    state.moveCursor=i+1;
+    state.movePhase='animating';
+    // One hand move means ALL the changed beads on the same rod move together.
+    moveTo(m.value,false,m.column,m.shift);
+    if(d.starting){
+      if(m.column>=0){
+        const place=10**(state.columns-m.column-1),beadCount=Math.abs(m.shift)/place;
+        const placeName=place===1?'ones':place===10?'tens':place===100?'hundreds':'thousands';
+        $('stepInfo').textContent='Set '+beadCount+' '+placeName+' · move '+state.moveCursor+' of '+moves.length;
+      }else{
+        $('stepInfo').textContent='Set '+m.value+' · move '+state.moveCursor+' of '+moves.length;
+      }
+    }else{
+      $('stepInfo').textContent='Move '+state.moveCursor+' of '+moves.length+' · '+m.label;
+    }
+    updateButtons();
+    const next=moves[state.moveCursor];
+    const pause=next?movePauseMs(next.termId===m.termId,state.animationMs):FINAL_MOVE_SETTLE_MS;
+    // Mark the visible movement finished before the inter-move breathing
+    // interval begins. The skip-arrow can then distinguish a bead currently
+    // moving from one that has already reached its new position.
+    armTimer(()=>{
+      if(!state.active||token!==state.sessionId)return;
+      state.movePhase='settling';
+      armTimer(()=>runMovesFromCursor(index,token),pause);
+    },state.animationMs);
+  }
+  function updateButtons(){
+    const active=state.active,waiting=state.waiting,hasExercise=state.hasExercise;
+    // Do not allow a new exercise until the learner submits an answer.
+    $('start').disabled=active||waiting;
+    $('practiceMode').disabled=active||waiting;
+    $('testMode').disabled=active||waiting;
+    // Keep transport space reserved even before exercise starts; all controls are disabled until then.
+    // Keep Stop visible (but disabled) at the answer stage, rather than
+    // unexpectedly replacing it with Start before an answer is submitted.
+    $('stop').classList.toggle('hidden',!(active||waiting));
+    $('pause').disabled=!active;$('stop').disabled=!active;
+    const moves=hasExercise?stepDescription(state.currentStep).moves:[];
+    $('previousStep').disabled=!hasExercise||state.currentStep<=0;
+    $('nextStep').disabled=!hasExercise||state.currentStep>=state.steps.length;
+    $('previousMove').disabled=!hasExercise||state.mode==='test'||(state.currentStep===0&&state.moveCursor<=0);
+    $('nextMove').disabled=!hasExercise||state.mode==='test'||(state.currentStep===state.steps.length&&state.moveCursor>=moves.length&&state.movePhase!=='animating');
+    $('repeatStep').disabled=!hasExercise;
+    const showPlayIcon=!active||state.paused;
+    $('pause').title=showPlayIcon?'Play':'Pause';
+    $('pause').setAttribute('aria-label',showPlayIcon?'Play':'Pause');
+    $('pauseIcon').innerHTML=showPlayIcon
+      ? '<path d="M7 4 20 12 7 20Z"/>'
+      : '<rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/>';
+    $('stepCounter').textContent=hasExercise ? ('Number '+(state.currentStep+1)+'/'+(state.steps.length+1)+(state.mode==='test'?' · Test':' · Move '+state.moveCursor+'/'+moves.length)) : 'Controls ready';
+    $('answerArea').classList.toggle('hidden',!waiting);
+    $('readout').classList.toggle('awaiting-answer',waiting);
+    $('answer').disabled=!waiting||state.answered;$('check').disabled=!waiting||state.answered;
+  }
+  function randomInt(lo,hi){return lo+Math.floor(Math.random()*(hi-lo+1))}
+  function makeSession(){
+    // A selected count of N means N spoken numbers total: 1 starting
+    // number followed by N-1 signed arithmetic operations.
+    const places=Number($('digits').value),cap=10**places-1,numOps=Math.max(0,Number($('steps').value)-1);
+    const additionOnly=$('operationMode').value==='add';
+    if(additionOnly){
+      // Reserve one unit for every future operation. A positive addend always
+      // exists, and the final number can never exceed 9 / 99 / 999 / 9999.
+      const initial=randomInt(1,Math.max(1,Math.min(cap-numOps,Math.floor(cap*.22))));
+      let cur=initial;
+      const operations=[];
+      for(let i=0;i<numOps;i++){
+        const remaining=numOps-i-1;
+        const possible=cap-cur-remaining;
+        const average=(cap-cur)/(numOps-i);
+        const maxJump=Math.max(1,Math.min(possible,Math.ceil(average*1.5)));
+        const delta=randomInt(1,maxJump);
+        cur+=delta;
+        operations.push({delta,value:cur});
+      }
+      return {initial,operations};
+    }
+    const initial=Math.max(1,Math.floor(cap*(.20+Math.random()*.55)));let cur=initial;const operations=[];
+    for(let i=0;i<numOps;i++){
+      let positive=cur===0||(cur<cap&&Math.random()>.5);
+      let room=positive?cap-cur:cur;
+      if(room===0){positive=!positive;room=positive?cap-cur:cur}
+      const maxJump=Math.min(room,places===1?8:Math.max(9,Math.floor(cap*.23)));
+      const n=randomInt(1,Math.max(1,maxJump));
+      const delta=positive?n:-n;cur+=delta;operations.push({delta,value:cur});
+    }
+    return {initial,operations};
+  }
+  function stopCurrentPlayback(){
+    // Stop any timer/speech associated with the old spoken step. Incrementing
+    // the token prevents outdated callbacks from advancing the exercise.
+    state.sessionId++;
+    clearTimeout(state.timer);state.timer=null;state.timerCb=null;state.remainingMs=0;
+    cancelSpeech();
+  }
+  function reset(){
+    stopCurrentPlayback();state.active=false;state.waiting=false;state.answered=false;
+    state.paused=false;state.pausedAt=0;state.nextQueued=false;
+    state.hasExercise=false;state.pendingStep=false;
+    state.steps=[];state.movePlanOverrides.clear();state.stepIndex=0;state.currentStep=0;state.moveCursor=0;state.movePhase='idle';state.pendingMove=false;updateButtons();
+  }
+  // A step is one SPOKEN number, including the opening number (step zero).
+  // Seeking restores the value immediately *before* that number, so its
+  // complete human move plan can run again without double-applying anything.
+  function valueBeforeStep(index){
+    if(index===0)return 0;
+    if(index===1)return state.initialValue;
+    return state.steps[index-2].value;
+  }
+  function stepDescription(index){
+    if(index===0)return {label:String(state.initialValue),speech:String(state.initialValue),
+      moves:state.movePlanOverrides.get(0)||humanMovePlan(0,state.initialValue,state.columns,state.detailLevel),starting:true};
+    const op=state.steps[index-1];
+    return {label:(op.delta>=0?'+':'−')+' '+Math.abs(op.delta),
+      speech:(op.delta>=0?'plus ':'minus ')+Math.abs(op.delta),
+      moves:state.movePlanOverrides.get(index)||humanMovePlan(valueBeforeStep(index),op.delta,state.columns,state.detailLevel),starting:false};
+  }
+  function showPreparedStep(index){
+    const d=stepDescription(index);
+    $('operation').textContent=d.label;
+    $('stepInfo').textContent=index===0?'Starting number · ready to replay':
+      'Operation '+index+' of '+state.steps.length+' · ready to replay';
+    $('phase').textContent=state.mode==='test'?'Mental abacus · Test':'Guided practice';
+    updateTotal();
+  }
+  function runSpokenStep(index,token){
+    if(!state.active||token!==state.sessionId)return;
+    state.movePlanOverrides.delete(index);
+    state.currentStep=index;state.stepIndex=index;state.moveCursor=0;
+    state.pendingStep=false;state.pendingMove=false;state.movePhase='speaking';
+    const d=stepDescription(index);
+    const outcome=index===0?state.initialValue:state.steps[index-1].value;
+    $('operation').textContent=d.label;
+    $('stepInfo').textContent=index===0
+      ? 'Starting number · '+(state.steps.length+1)+' spoken numbers'
+      : 'Operation '+index+' of '+state.steps.length+' · listening';
+    updateButtons();
+    if(state.mode==='test'){
+      // Test presents the spoken number without ever setting, animating, or
+      // illuminating the soroban beads. Number-level navigation still works.
+      state.movePhase='presenting';
+      $('stepInfo').textContent=index===0?'Starting number · calculate mentally':
+        'Operation '+index+' of '+state.steps.length+' · calculate mentally';
+      const afterNumber=()=>{
+        if(!state.active||token!==state.sessionId)return;
+        state.movePhase='between';
+        scheduleNext(token);
+      };
+      if(voiceEnabledForCurrentMode())speak(d.speech,afterNumber);
+      else {
+        status('Test · '+d.label+' · no voice or bead hints');
+        armTimer(afterNumber,Math.max(450,Math.min(950,Number($('delay').value))));
+      }
+      return;
+    }
+    const afterNumber=()=>{
+      if(!state.active||token!==state.sessionId)return;
+      state.movePhase='lead';
+      const latestMoves=stepDescription(index).moves;
+      $('stepInfo').textContent=index===0
+        ? 'Starting number · preparing '+latestMoves.length+' hand move'+(latestMoves.length===1?'':'s')
+        : 'Operation '+index+' of '+state.steps.length+' · preparing';
+      armTimer(()=>runMovesFromCursor(index,token),AFTER_SPEECH_PAUSE_MS);
+    };
+    if(voiceEnabledForCurrentMode())speak(d.speech,afterNumber);
+    else {
+      status('Practice · '+d.label+' · voice off');
+      armTimer(afterNumber,Math.max(350,Math.min(700,Number($('delay').value)*.60)));
+    }
+  }
+  function scheduleNext(token){
+    if(!state.active||token!==state.sessionId)return;
+    state.movePhase='between';
+    armTimer(()=>{
+      if(!state.active||token!==state.sessionId)return;
+      const target=state.currentStep+1;
+      if(target>state.steps.length){finish();return}
+      runSpokenStep(target,token);
+    },Number($('delay').value));
+  }
+  // Full arrows navigate spoken numbers. While paused, the abacus shows the
+  // configuration before the selected number; Play voices it and starts it.
+  function seekToStep(index,playImmediately){
+    if(!state.hasExercise)return;
+    const target=Math.max(0,Math.min(index,state.steps.length));
+    stopCurrentPlayback();
+    state.movePlanOverrides.delete(target);
+    state.currentStep=target;state.stepIndex=target;state.moveCursor=0;
+    state.active=true;state.waiting=false;
+    state.pendingStep=!playImmediately;state.pendingMove=false;state.movePhase='selected';
+    state.paused=!playImmediately;
+    state.pausedAt=state.paused?performance.now():0;
+    moveTo(state.mode==='test'?0:valueBeforeStep(target),true);
+    showPreparedStep(target);
+    updateButtons();
+    if(playImmediately){
+      status(target===0?'Replaying the starting number…':`Playing operation ${target}…`);
+      armTimer(()=>runSpokenStep(target,state.sessionId),NAVIGATION_PAUSE_MS);
+    }else{
+      status(state.mode==='test'
+        ?'Number '+(target+1)+' selected. Press Play to present it.'
+        :'Number '+(target+1)+' selected. Press Play to hear it and see the moves.');
+    }
+  }
+  // Step arrows move to the exact resulting value of an individual hand
+  // action. Skip applies it instantly; Previous rewinds it. When playback is
+  // running, it continues from the selected point without repeating speech.
+  function seekToMove(index,cursor,playImmediately){
+    if(!state.hasExercise||state.mode==='test')return;
+    index=Math.max(0,Math.min(index,state.steps.length));
+    const d=stepDescription(index);
+    const target=Math.max(0,Math.min(cursor,d.moves.length));
+    stopCurrentPlayback();
+    state.active=true;state.waiting=false;
+    state.currentStep=index;state.stepIndex=index;state.moveCursor=target;
+    state.pendingStep=false;state.pendingMove=!playImmediately;state.movePhase='selected';
+    state.paused=!playImmediately;
+    state.pausedAt=state.paused?performance.now():0;
+    moveTo(valueAtMove(index,target),true);
+    showPreparedStep(index);
+    $('stepInfo').textContent='Hand move '+target+' of '+d.moves.length+' · '+(target?d.moves[target-1].label:'before first move');
+    updateButtons();
+    if(playImmediately){
+      status('Continuing at hand move '+target+' of '+d.moves.length+'.');
+      armTimer(()=>runMovesFromCursor(index,state.sessionId),NAVIGATION_PAUSE_MS);
+    }else{
+      status('Hand move '+target+' of '+d.moves.length+' selected. Press Play to continue.');
+    }
+  }
+  // A hand-step arrow is allowed to cross spoken-number boundaries. There
+  // are duplicate *values* at a boundary (last move of one number and the
+  // start of the next), so skip the duplicate: one click always traverses
+  // exactly one actual hand action, even when it belongs to another number.
+  function navigateHandMove(direction){
+    if(!state.hasExercise||state.mode==='test')return;
+    let index=state.currentStep;
+    let cursor=state.moveCursor;
+    const count=stepDescription(index).moves.length;
+    if(direction<0){
+      if(cursor>0)cursor--;
+      else if(index>0){
+        index--;
+        cursor=Math.max(0,stepDescription(index).moves.length-1);
+      }else return;
+    }else{
+      // If a bead is already in motion, the first click finishes that move;
+      // it must not jump across the subsequent move as well.
+      if(state.movePhase==='animating'){
+        // The current cursor already points at that move's destination.
+      }else if(cursor<count)cursor++;
+      else if(index<state.steps.length){
+        index++;
+        cursor=Math.min(1,stepDescription(index).moves.length);
+      }else return;
+    }
+    seekToMove(index,cursor,!state.paused);
+  }
+  function run(initial,ops,mode){
+    reset();state.active=true;state.hasExercise=true;state.mode=mode;
+    state.columns=Math.max(1,Number($('digits').value),String(Math.max(initial,...ops.map(o=>o.value))).length);
+
+    state.initialValue=initial;state.steps=ops;state.detailLevel=Number($('moveDetail').value);state.finalValue=ops.length?ops[ops.length-1].value:initial;
+    updateMoveDetailHint();
+    state.currentStep=0;state.stepIndex=0;state.moveCursor=0;state.movePhase='idle';moveTo(0,true);
+    $('phase').textContent=mode==='test'?'Mental abacus · Test':$('operationMode').value==='add'?'Addition practice':'Guided practice';
+    $('operation').textContent=String(initial);
+    $('stepInfo').textContent='Starting number · '+(ops.length+1)+' spoken numbers';
+    $('tips').classList.add('hidden');
+    $('answer').value='';feedback('');updateButtons();
+    runSpokenStep(0,state.sessionId);
+  }
+  function finish(){
+    state.active=false;state.waiting=!state.answered;state.paused=false;state.pendingStep=false;state.pendingMove=false;state.movePhase='completed';
+    cancelSpeech();
+    $('phase').textContent=state.answered?'Solution':'Your answer';
+    $('operation').textContent=state.answered?String(state.finalValue):'= ?';
+    $('stepInfo').textContent=(state.steps.length+1)+' spoken numbers completed';
+    updateTotal();
+    status(state.answered?'Review complete.':'Enter the final total, or use the arrows to review.');
+    updateButtons();
+    // An unsolicited focus can open the iOS software keyboard and shrink its visual viewport.
+    // Touch users tap the in-readout field; desktop retains keyboard-first entry.
+    if(!state.answered && window.matchMedia('(hover:hover) and (pointer:fine)').matches)$('answer').focus();
+  }
+  function checkAnswer(){if(!state.waiting||state.answered)return;
+    if($('answer').value.trim()===''){feedback('Enter your answer first.',false);return}
+    const correct=Number($('answer').value)===state.finalValue;
+    state.waiting=false;state.answered=true;addResult(correct);
+    $('phase').textContent=correct?'Correct':'Solution';
+    $('operation').textContent=String(state.finalValue);$('stepInfo').textContent='Final total';
+    $('total').textContent='';
+    feedback(correct?'✓ Correct!':('The answer is '+state.finalValue+'.'),correct);
+    status('Start another practice session when ready.');updateButtons();
+  }
+  function togglePause(){if(!state.active)return;
+    if(!state.paused){
+      state.paused=true;state.pausedAt=performance.now();
+      if(state.timer!==null){
+        clearTimeout(state.timer);state.timer=null;
+        state.remainingMs=Math.max(0,state.timerDue-state.pausedAt);
+      }
+      if(state.speechWatchdog!==null){
+        clearTimeout(state.speechWatchdog);state.speechWatchdog=null;
+        state.speechWatchdogRemaining=Math.max(0,state.speechWatchdogDue-state.pausedAt);
+      }
+      if(speech&&speech.speaking){try{speech.pause()}catch{}}
+      if(bundled.playing&&bundled.ctx){bundled.ctx.suspend().catch(()=>{})}
+      status('Paused. Use the arrows to choose a spoken step.');
+    }else{
+      state.paused=false;
+      state.animationStart+=performance.now()-state.pausedAt;
+      state.pausedAt=0;
+      if(state.pendingStep){
+        state.pendingStep=false;
+        armTimer(()=>runSpokenStep(state.currentStep,state.sessionId),NAVIGATION_PAUSE_MS);
+      }else if(state.pendingMove){
+        state.pendingMove=false;
+        armTimer(()=>runMovesFromCursor(state.currentStep,state.sessionId),NAVIGATION_PAUSE_MS);
+      }else{
+        if(speech&&speech.paused){try{speech.resume()}catch{}}
+        if(bundled.playing&&bundled.ctx){bundled.ctx.resume().catch(()=>{})}
+        if(state.timerCb)armTimer(state.timerCb,state.remainingMs);
+        if(state.speechWatchdogCb)armSpeechWatchdog(state.speechWatchdogCb,state.speechWatchdogRemaining);
+      }
+      status('Playing.');
+    }
+    updateButtons();
+  }
+  $('start').addEventListener('click',()=>{prepareSpeechOnTap();const s=makeSession();run(s.initial,s.operations,state.selectedMode)});
+  $('pause').addEventListener('click',()=>{prepareSpeechOnTap();togglePause()});
+  $('previousStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep-1,!state.paused)});
+  $('previousMove').addEventListener('click',()=>navigateHandMove(-1));
+  $('nextMove').addEventListener('click',()=>navigateHandMove(1));
+  $('nextStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep+1,!state.paused)});
+  $('repeatStep').addEventListener('click',()=>{prepareSpeechOnTap();seekToStep(state.currentStep,true)});
+  $('stop').addEventListener('click',()=>{reset();state.mode='ready';$('phase').textContent=state.selectedMode==='test'?'Ready to test':'Ready to practice';$('stepInfo').textContent='Session stopped.';$('operation').textContent='—';moveTo(0,true);$('tips').classList.add('hidden');status('Session stopped.');feedback('')});
+  $('check').addEventListener('click',checkAnswer);
+  $('answer').addEventListener('keydown',e=>{if(e.key==='Enter')checkAnswer()});
+  window.ghostBeadsPlanner=humanMovePlan; // inspect a sequence in the browser console
+  $('total').textContent='';updateStats();updateButtons();
+})();
+</script>
+
+<script>
+// The app runs without a service worker, but secure hosting enables installation
+// and pre-caches the whole self-contained soroban UI for use without internet.
+(()=>{'use strict';
+  const status = document.getElementById('pwaStatus');
+  if(!status) return;
+  const installed = window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+  const label = message => {status.textContent=message};
+  if (!('serviceWorker' in navigator)) {
+    label('This browser cannot cache the app for offline use. Try Safari on a recent iOS version.');
+    return;
+  }
+  if (!window.isSecureContext || location.protocol==='file:') {
+    label('Offline install needs an HTTPS website. A downloaded HTML file cannot install a service worker.');
+    return;
+  }
+  navigator.serviceWorker.register('./sw.js', {scope:'./'})
+    .then(() => navigator.serviceWorker.ready)
+    .then(() => {
+      label((installed?'Installed app':'Ready to install') +
+        ' · app files cached for offline use' + (!navigator.onLine?' · currently offline':'.'));
+    })
+    .catch(e => label('Offline setup was not available: '+e.message));
+})();
+</script>
+<script>
+// On iOS, older Safari/WebKit versions can ignore viewport zoom restrictions.
+// These handlers stop WebKit's native pinch gesture without blocking one-finger scrolling.
+(() => {
+  if (!(('ontouchstart' in window) || navigator.maxTouchPoints > 0)) return;
+  const preventZoom = event => event.preventDefault();
+  document.addEventListener('gesturestart', preventZoom, { passive: false });
+  document.addEventListener('gesturechange', preventZoom, { passive: false });
+  document.addEventListener('gestureend', preventZoom, { passive: false });
+  // Block dragging the app's background, while allowing the Settings dialog
+  // to scroll naturally (including long settings screens and form controls).
+  document.addEventListener('touchmove', event => {
+    if (event.touches.length > 1) {
+      event.preventDefault();
+      return;
+    }
+    // The genuine GlassSheet owns its own touch and swipe gestures.
+    if (document.documentElement.classList.contains('ghost-glass-sheet-open')) return;
+    const dialog = document.getElementById('settingsDialog');
+    if (dialog?.open && (dialog === event.target || dialog.contains(event.target))) {
+      return; // Modal remains scrollable; background is locked.
+    }
+    event.preventDefault();
+  }, { passive: false });
+})();
+</script>
+<script type="module">
+// Matte sheet and unified PWA skin. Only installed iOS PWAs attempt React/Liquid Glass.
+// In normal browsers NO stylesheet, React bundle or glass UI is loaded.
+const info=window.ghostGlassInfo || {};
+function glassNotice(message, isError=false){
+  let note=document.getElementById('ghostGlassNotice');
+  if(!note){
+    note=document.createElement('div'); note.id='ghostGlassNotice';
+    note.setAttribute('role','status');
+    note.style.cssText='margin:0 0 14px;padding:12px 14px;border-radius:12px;line-height:1.5;font:13px/1.5 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:rgba(150,145,115,.13);color:inherit;';
+    document.querySelector('#settingsDialog .modal-body')?.prepend(note);
+  }
+  note.textContent=message;
+  if(isError)note.style.border='1px solid rgba(220,120,90,.5)';
+  return note;
+}
+if(window.ghostIOS27PWA){
+  const css=document.createElement('link');
+  css.rel='stylesheet'; css.href='./glass/glass-app.css';
+  const cssReady=new Promise((resolve,reject)=>{
+    css.addEventListener('load',resolve,{once:true});
+    css.addEventListener('error',()=>reject(Error('glass-app.css missing or blocked')),{once:true});
+  });
+  document.head.append(css);
+  // Matte sheet skin loads after genuine Liquid Glass
+  // CSS. Keep the React components and their drag/spring behavior unchanged.
+  const matte=document.createElement('link');
+  matte.rel='stylesheet'; matte.href='./glass/matte.css';
+  const matteReady=cssReady.then(()=>new Promise((resolve,reject)=>{
+    matte.addEventListener('load',resolve,{once:true});
+    matte.addEventListener('error',()=>reject(Error('matte.css missing or blocked')),{once:true});
+    document.head.append(matte);
+  }));
+  let failed=false;
+  function failedGlass(error){
+    if(failed)return;
+    failed=true;
+    document.documentElement.classList.remove('ghost-glass-active');
+    const detail=String(error?.message||error||'Unknown error');
+    window.ghostGlassInfo.error=detail;
+    window.ghostGlassInfo.state='failed';
+    glassNotice('Liquid Glass could not start: '+detail+'. Confirm glass/glass-app.js and glass/glass-app.css exist on your server.',true);
+    console.error('[Ghost Beads] Liquid Glass failed:',error);
+    css.remove();
+    matte.remove();
+  }
+  window.addEventListener('ghost-glass-react-error',event=>{
+    const detail=event.detail||{};
+    const message=detail.message||'React component render failed';
+    console.error('[Ghost Beads] React component error:',message,detail.componentStack||'');
+    failedGlass(Error(message));
+  },{once:true});
+  Promise.all([matteReady,import('./glass/glass-app.js')]).then(([,mod])=>{
+    if(typeof mod.mountGhostGlass!=='function')throw Error('The installed JS bundle has no mountGhostGlass() export');
+    window.ghostGlassInfo.state='mounting';
+    mod.mountGhostGlass();
+    // React mounts asynchronously. If it throws during render, preserve the
+    // working classic UI and show a useful diagnosis in classic Settings.
+    setTimeout(()=>{
+      if(!document.documentElement.classList.contains('ghost-glass-active'))
+        failedGlass(Error('React did not mount within 9 seconds (check glass bundle build and browser console)'));
+      else window.ghostGlassInfo.state='active';
+    },9000);
+  }).catch(failedGlass);
+}else if(info.eligible){
+  // A manual opt-in is available only to installed iOS PWAs whose OS version
+  // cannot be reliably identified. No normal browser can enable this feature.
+  const note=glassNotice('This Home Screen app is using the classic interface because iOS 27 could not be verified.');
+  const button=document.createElement('button');
+  button.type='button'; button.textContent='Try Liquid Glass controls';
+  button.style.cssText='display:block;margin-top:8px;padding:9px 12px;border-radius:9px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer';
+  button.addEventListener('click',()=>{
+    try {localStorage.setItem('ghostBeadsGlassOptIn','yes')}catch(_){}
+    location.reload();
+  });
+  note.appendChild(button);
+}
+</script>
+</body>
+</html>

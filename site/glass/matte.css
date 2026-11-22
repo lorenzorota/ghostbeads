@@ -1,0 +1,261 @@
+/* Ghost Beads — unified matte iOS materials.
+ * Appearance's flat grouped surface is now the reference for EVERY panel and
+ * control. The genuine React Liquid Glass JS remains loaded: touch, spring,
+ * segmented-control and GlassSheet gestures are NOT replaced by a mock UI.
+ * Loaded after glass-app.css ONLY for installed eligible iOS Home Screen PWAs.
+ */
+html.ghost-glass-active {
+  --gb-matte-surface:rgba(46,46,48,.96);
+  --gb-matte-panel:rgba(29,32,35,.96);
+  --gb-matte-sheet:rgba(31,31,33,.98);
+  --gb-matte-border:rgba(255,255,255,.085);
+  --gb-matte-divider:rgba(255,255,255,.105);
+  --gb-matte-shadow:0 2px 9px rgba(0,0,0,.11);
+  --gb-matte-control:rgba(48,48,50,.98);
+  --gb-matte-selected:rgba(88,88,92,.96);
+  --gb-matte-accent:#dec197;
+}
+html[data-theme='light'].ghost-glass-active {
+  --gb-matte-surface:rgba(251,249,244,.97);
+  --gb-matte-panel:rgba(250,249,244,.98);
+  --gb-matte-sheet:rgba(244,242,236,.98);
+  --gb-matte-border:rgba(65,64,58,.10);
+  --gb-matte-divider:rgba(65,64,58,.10);
+  --gb-matte-shadow:0 2px 9px rgba(69,60,47,.075);
+  --gb-matte-control:rgba(251,249,244,.99);
+  --gb-matte-selected:rgba(225,222,215,.98);
+  --gb-matte-accent:#dec197;
+}
+
+/* Settings header: NO independent dark slab behind title or Done button.
+ * The whole sheet is one continuous translucent material. */
+html.ghost-glass-active .gbglass-sheet-content {
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html.ghost-glass-active .gbglass-sheet-head {
+  background:transparent!important;
+  background-image:none!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  box-shadow:none!important;
+  border-bottom:1px solid var(--gb-matte-divider)!important;
+}
+html.ghost-glass-active .gbglass-sheet-head::before,
+html.ghost-glass-active .gbglass-sheet-head::after {
+  content:none!important;
+  display:none!important;
+}
+/* Match the actual GlassSheet shell to the same muted appearance, without
+ * modifying its transform/pointer handling that drives swipe-to-dismiss. */
+html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) {
+  background:var(--gb-matte-sheet)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-matte-border)!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.13)!important;
+}
+
+/* All Settings group cards use the SAME material as the Appearance row. */
+html.ghost-glass-active .gbglass-appearance-static,
+html.ghost-glass-active .gbglass-settings-card,
+html.ghost-glass-active .gbglass-offline-status {
+  background:var(--gb-matte-surface)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-matte-border)!important;
+  box-shadow:var(--gb-matte-shadow)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+}
+html.ghost-glass-active .gbglass-setting-row,
+html[data-theme='light'].ghost-glass-active .gbglass-setting-row {
+  background:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+html.ghost-glass-active .gbglass-setting-row + .gbglass-setting-row {
+  border-top-color:var(--gb-matte-divider)!important;
+}
+/* The old refracting group cards draw an independent rim; suppress the
+ * cosmetic overlays while preserving their React children and listeners. */
+html.ghost-glass-active .gbglass-settings-card::before,
+html.ghost-glass-active .gbglass-settings-card::after,
+html.ghost-glass-active .gbglass-nav::before,
+html.ghost-glass-active .gbglass-nav::after {
+  opacity:0!important;
+}
+
+/* Transport card, mode selector, and primary/secondary buttons share a single
+ * flat, low-glare surface token. Buttons are still GlassButton components and
+ * retain the package's press/drag/spring motion. */
+html.ghost-glass-active .gbglass-nav,
+html.ghost-glass-active .gbglass-quiet-segmented {
+  background:var(--gb-matte-surface)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-matte-border)!important;
+  box-shadow:var(--gb-matte-shadow)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+}
+html.ghost-glass-active .gbglass-toolbar-inner button,
+html.ghost-glass-active #ghostGlassGear button,
+html.ghost-glass-active #ghostGlassCheck button,
+html.ghost-glass-active .gbglass-sheet-head button,
+html.ghost-glass-active .gbglass-voice-test button {
+  background:var(--gb-matte-control)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-matte-border)!important;
+  box-shadow:var(--gb-matte-shadow)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+}
+html.ghost-glass-active .gbglass-toolbar-inner button::before,
+html.ghost-glass-active .gbglass-toolbar-inner button::after,
+html.ghost-glass-active #ghostGlassGear button::before,
+html.ghost-glass-active #ghostGlassGear button::after,
+html.ghost-glass-active .gbglass-sheet-head button::before,
+html.ghost-glass-active .gbglass-sheet-head button::after,
+html.ghost-glass-active .gbglass-voice-test button::before,
+html.ghost-glass-active .gbglass-voice-test button::after {
+  opacity:0!important;
+}
+/* One accent for the main action, with a matte fill rather than a shiny rim. */
+html.ghost-glass-active .gbglass-primary-action:not(:disabled),
+html.ghost-glass-active .gbglass-play:not(:disabled),
+html.ghost-glass-active #ghostGlassCheck button:not(:disabled) {
+  background:var(--gb-matte-accent)!important;
+  background-image:none!important;
+  color:#202020!important;
+  border-color:rgba(190,158,117,.3)!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.09)!important;
+}
+/* Keep the active segment a soft muted solid, not an illuminated lens. */
+html.ghost-glass-active .gbglass-quiet-segmented :is([aria-selected='true'],[aria-checked='true'],[aria-pressed='true']) {
+  background:var(--gb-matte-selected)!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+/* Switches retain iOS green and drag behavior. Just drop artificial glare. */
+html.ghost-glass-active .gbglass-setting-toggle [role='switch'] {
+  box-shadow:none!important;
+  filter:none!important;
+}
+
+/* Matching matte soroban and counter backgrounds; no gradient or bright rim.
+ * The optical GlassCard underlay remains mounted but barely visible, retaining
+ * the library and original layering without obscuring moving beads or labels. */
+html.ghost-glass-active .stage {
+  background:var(--gb-matte-panel)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-matte-border)!important;
+  box-shadow:0 6px 19px rgba(0,0,0,.09)!important;
+}
+html.ghost-glass-active .bead-area,
+html.ghost-glass-active .readout,
+html[data-theme='light'].ghost-glass-active .bead-area,
+html[data-theme='light'].ghost-glass-active .readout {
+  background:var(--gb-matte-panel)!important;
+  background-image:none!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+html.ghost-glass-active .gbglass-panel-glass {
+  opacity:.08!important;
+  filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+}
+/* Prevent stray tinted glow/gradients behind the navigation area. */
+html.ghost-glass-active .toolbar,
+html.ghost-glass-active .gbglass-toolbar-inner {
+  background:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+
+/* Duller materials should respect accessibility as well as system theme. */
+@media (prefers-reduced-transparency:reduce) {
+  html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content),
+  html.ghost-glass-active .gbglass-settings-card,
+  html.ghost-glass-active .gbglass-nav,
+  html.ghost-glass-active .gbglass-quiet-segmented {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+}
+
+
+/* iOS-style MATTE Settings sheet.
+ * The existing root GlassSheet is kept intact (spring/drag/detents), but its
+ * large optical substrate no longer contributes a luminous rim or gradient.
+ * Match the Appearance row material rather than the old shiny sheet shell.
+ * These overrides do NOT touch transforms, positioning, hit-testing, or scroll.
+ */
+html.ghost-glass-active {
+  --gb-sheet-material: rgba(39,40,42,.995);
+  --gb-sheet-hairline: rgba(255,255,255,.065);
+  --gb-sheet-depth: 0 12px 32px rgba(0,0,0,.17);
+}
+html[data-theme='light'].ghost-glass-active {
+  --gb-sheet-material: rgba(243,242,238,.995);
+  --gb-sheet-hairline: rgba(45,46,45,.095);
+  --gb-sheet-depth: 0 12px 32px rgba(42,38,34,.10);
+}
+
+/* The dialog is the library-owned, draggable sheet. Only adjust paint. */
+html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) {
+  background:var(--gb-sheet-material)!important;
+  background-color:var(--gb-sheet-material)!important;
+  background-image:none!important;
+  border:1px solid var(--gb-sheet-hairline)!important;
+  box-shadow:var(--gb-sheet-depth)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  filter:none!important;
+}
+
+/* Suppress any rim/highlight generated by the sheet's outer pseudo layers,
+ * not pseudo layers in the real React buttons and switches inside it. */
+html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content)::before,
+html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content)::after {
+  opacity:0!important;
+  background:none!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  pointer-events:none!important;
+}
+
+/* A matte, near-opaque content surface hides the optical substrate that can
+ * still shine through the sheet's interior on iOS Safari. This remains one
+ * continuous surface behind the Settings heading, Done button and rows. */
+html.ghost-glass-active .gbglass-sheet-content {
+  background:var(--gb-sheet-material)!important;
+  background-image:none!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+html.ghost-glass-active .gbglass-sheet-head {
+  background:transparent!important;
+  background-image:none!important;
+  border-bottom:1px solid var(--gb-sheet-hairline)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+
+/* Keep the drag pill visible but understated. Avoid editing its dimensions,
+ * event listeners, or touch-action, which are owned by GlassSheet. */
+html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) :is([class*='handle'],[class*='Handle']) {
+  box-shadow:none!important;
+  filter:none!important;
+}
+
+/* More solid backgrounds on devices requesting less transparency. */
+@media (prefers-reduced-transparency:reduce) {
+  html.ghost-glass-active {--gb-sheet-material:rgb(39,40,42);}
+  html[data-theme='light'].ghost-glass-active {--gb-sheet-material:rgb(243,242,238);}
+}

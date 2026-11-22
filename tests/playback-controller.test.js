@@ -203,13 +203,14 @@ test('browser initializes playback before UI and caches it offline', () => {
   const root = path.join(__dirname, '..');
   const index = fs.readFileSync(path.join(root, 'site/index.html'), 'utf8');
   const sw = fs.readFileSync(path.join(root, 'site/sw.js'), 'utf8');
+  const main = fs.readFileSync(path.join(root, 'site/js/app/main.js'), 'utf8');
   const tag = '<script src="./js/playback/controller.js"></script>';
   assert.ok(index.includes(tag));
-  assert.ok(index.indexOf(tag) < index.indexOf('window.GhostBeadsPlayback.createPlaybackController()'));
-  assert.ok(index.includes('window.GhostBeadsPlayback.createPlaybackController()'));
+  assert.ok(index.indexOf(tag) < index.indexOf('<script src="./js/app/main.js"></script>'));
+  assert.ok(main.includes('window.GhostBeadsPlayback.createPlaybackController()'));
   assert.ok(sw.includes("'./js/playback/controller.js'"));
-  assert.equal(index.includes('state.sessionId'), false);
-  assert.equal(index.includes('state.timerDue'), false);
+  assert.equal(main.includes('state.sessionId'), false);
+  assert.equal(main.includes('state.timerDue'), false);
 });
 
 test('browser script global export works without module bundling', () => {

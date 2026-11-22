@@ -94,10 +94,11 @@ test('browser loads the generator before the application and pre-caches it offli
   const index=fs.readFileSync(path.join(__dirname,'../site/index.html'),'utf8');
   const serviceWorker=fs.readFileSync(path.join(__dirname,'../site/sw.js'),'utf8');
   const scriptTag='<script src="./js/core/exercise-generator.js"></script>';
-  const appTag='<script>\n(()=>{\'use strict\';';
+  const appTag='<script src="./js/app/main.js"></script>';
+  const main=fs.readFileSync(path.join(__dirname,'../site/js/app/main.js'),'utf8');
   assert.ok(index.includes(scriptTag),'Browser script tag is missing');
   assert.ok(index.indexOf(scriptTag)<index.indexOf(appTag),'Generator must load before app startup');
-  assert.ok(index.includes('window.GhostBeadsExercises.generateExercise('));
+  assert.ok(main.includes('window.GhostBeadsExercises.generateExercise('));
   assert.ok(serviceWorker.includes("'./js/core/exercise-generator.js'"),'Offline shell must cache module');
 });
 

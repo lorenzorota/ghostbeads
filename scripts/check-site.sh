@@ -12,6 +12,12 @@ for asset in \
   site/js/core/soroban.js \
   site/js/core/exercise-generator.js \
   site/js/playback/controller.js \
+  site/js/app/settings.js \
+  site/js/app/progress.js \
+  site/js/app/main.js \
+  site/js/rendering/canvas.js \
+  site/js/ui/settings-dialog.js \
+  site/js/ui/bindings.js \
   site/manifest.webmanifest \
   site/glass/glass-app.js \
   site/glass/glass-app.css \
@@ -31,6 +37,12 @@ if [[ -f site/sw.js ]]; then
   node --check site/js/core/soroban.js
   node --check site/js/core/exercise-generator.js
   node --check site/js/playback/controller.js
+  node --check site/js/app/settings.js
+  node --check site/js/app/progress.js
+  node --check site/js/app/main.js
+  node --check site/js/rendering/canvas.js
+  node --check site/js/ui/settings-dialog.js
+  node --check site/js/ui/bindings.js
 fi
 if [[ -f site/manifest.webmanifest ]]; then
   python3 -m json.tool site/manifest.webmanifest > /dev/null

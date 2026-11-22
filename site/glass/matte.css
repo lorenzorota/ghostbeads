@@ -259,3 +259,11 @@ html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) :is([class*=
   html.ghost-glass-active {--gb-sheet-material:rgb(39,40,42);}
   html[data-theme='light'].ghost-glass-active {--gb-sheet-material:rgb(243,242,238);}
 }
+
+/* Installed iPhone PWA: give the draggable Settings sheet a small,
+ * iOS-style outer gutter. Leave its content padding and detent behavior alone. */
+@media (display-mode: standalone) and (orientation: portrait) and (max-width: 600px) {
+  html.ghost-glass-active .lg-sheet.lg-sheet--detents:has(.gbglass-sheet-content) {
+    width: calc(100% - 24px);
+  }
+}

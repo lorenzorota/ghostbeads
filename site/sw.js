@@ -5,6 +5,7 @@ const PREVIOUS_WHOLE_VOICE_CACHE = 'ghost-beads-pwa-v39-whole-number-voice';
 const REUSE_MARKER = new URL('__voice-reuse-legacy__', self.registration.scope).href;
 const STATIC_ASSETS = [
   './', './index.html', './manifest.webmanifest',
+  './js/core/soroban.js',
   './glass/glass-app.js', './glass/glass-app.css',
   './glass/matte.css',
   './icons/icon-192.png', './icons/icon-512.png',

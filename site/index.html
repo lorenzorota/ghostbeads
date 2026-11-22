@@ -987,6 +987,7 @@
 
 
 <script src="./js/core/soroban.js"></script>
+<script src="./js/core/exercise-generator.js"></script>
 <script>
 (()=>{'use strict';
   const $=id=>document.getElementById(id);
@@ -1853,39 +1854,13 @@
     $('readout').classList.toggle('awaiting-answer',waiting);
     $('answer').disabled=!waiting||state.answered;$('check').disabled=!waiting||state.answered;
   }
-  function randomInt(lo,hi){return lo+Math.floor(Math.random()*(hi-lo+1))}
+  // Keep the UI adapter here: exercise generation itself has no DOM access.
   function makeSession(){
-    // A selected count of N means N spoken numbers total: 1 starting
-    // number followed by N-1 signed arithmetic operations.
-    const places=Number($('digits').value),cap=10**places-1,numOps=Math.max(0,Number($('steps').value)-1);
-    const additionOnly=$('operationMode').value==='add';
-    if(additionOnly){
-      // Reserve one unit for every future operation. A positive addend always
-      // exists, and the final number can never exceed 9 / 99 / 999 / 9999.
-      const initial=randomInt(1,Math.max(1,Math.min(cap-numOps,Math.floor(cap*.22))));
-      let cur=initial;
-      const operations=[];
-      for(let i=0;i<numOps;i++){
-        const remaining=numOps-i-1;
-        const possible=cap-cur-remaining;
-        const average=(cap-cur)/(numOps-i);
-        const maxJump=Math.max(1,Math.min(possible,Math.ceil(average*1.5)));
-        const delta=randomInt(1,maxJump);
-        cur+=delta;
-        operations.push({delta,value:cur});
-      }
-      return {initial,operations};
-    }
-    const initial=Math.max(1,Math.floor(cap*(.20+Math.random()*.55)));let cur=initial;const operations=[];
-    for(let i=0;i<numOps;i++){
-      let positive=cur===0||(cur<cap&&Math.random()>.5);
-      let room=positive?cap-cur:cur;
-      if(room===0){positive=!positive;room=positive?cap-cur:cur}
-      const maxJump=Math.min(room,places===1?8:Math.max(9,Math.floor(cap*.23)));
-      const n=randomInt(1,Math.max(1,maxJump));
-      const delta=positive?n:-n;cur+=delta;operations.push({delta,value:cur});
-    }
-    return {initial,operations};
+    return window.GhostBeadsExercises.generateExercise({
+      digits:Number($('digits').value),
+      numberCount:Number($('steps').value),
+      operationMode:$('operationMode').value
+    });
   }
   function stopCurrentPlayback(){
     // Stop any timer/speech associated with the old spoken step. Incrementing

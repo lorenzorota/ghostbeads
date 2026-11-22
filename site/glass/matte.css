@@ -260,10 +260,19 @@ html.ghost-glass-active [role='dialog']:has(.gbglass-sheet-content) :is([class*=
   html[data-theme='light'].ghost-glass-active {--gb-sheet-material:rgb(243,242,238);}
 }
 
-/* Installed iPhone PWA: give the draggable Settings sheet a small,
- * iOS-style outer gutter. Leave its content padding and detent behavior alone. */
+/* Installed iPhone PWA: use native-style grouped-list gutters.
+ * Keep the bottom sheet full width; let the settings rows use more space. */
 @media (display-mode: standalone) and (orientation: portrait) and (max-width: 600px) {
   html.ghost-glass-active .lg-sheet.lg-sheet--detents:has(.gbglass-sheet-content) {
-    width: calc(100% - 24px);
+    width: 100%;
+  }
+  html.ghost-glass-active .lg-sheet__content:has(.gbglass-sheet-content) {
+    padding-inline: 8px;
+  }
+  html.ghost-glass-active .gbglass-sheet-content {
+    width: 100%;
+  }
+  html.ghost-glass-active .gbglass-sheet-scroll {
+    padding-inline: 8px;
   }
 }

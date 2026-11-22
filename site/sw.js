@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './js/core/soroban.js',
   './js/core/exercise-generator.js',
+  './js/playback/controller.js',
   './glass/glass-app.js', './glass/glass-app.css',
   './glass/matte.css',
   './icons/icon-192.png', './icons/icon-512.png',

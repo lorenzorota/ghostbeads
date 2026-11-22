@@ -9,6 +9,30 @@
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<!-- Optional native iOS launch images; selected by screen dimensions and system theme. -->
+<link rel="apple-touch-startup-image" href="./startup/ios-640x1136-dark.png" media="(prefers-color-scheme: dark) and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-640x1136-light.png" media="(prefers-color-scheme: light) and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-750x1334-dark.png" media="(prefers-color-scheme: dark) and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-750x1334-light.png" media="(prefers-color-scheme: light) and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1125x2436-dark.png" media="(prefers-color-scheme: dark) and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1125x2436-light.png" media="(prefers-color-scheme: light) and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1170x2532-dark.png" media="(prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1170x2532-light.png" media="(prefers-color-scheme: light) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1179x2556-dark.png" media="(prefers-color-scheme: dark) and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1179x2556-light.png" media="(prefers-color-scheme: light) and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1206x2622-dark.png" media="(prefers-color-scheme: dark) and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1206x2622-light.png" media="(prefers-color-scheme: light) and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-828x1792-dark.png" media="(prefers-color-scheme: dark) and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-828x1792-light.png" media="(prefers-color-scheme: light) and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1242x2688-dark.png" media="(prefers-color-scheme: dark) and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1242x2688-light.png" media="(prefers-color-scheme: light) and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1284x2778-dark.png" media="(prefers-color-scheme: dark) and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1284x2778-light.png" media="(prefers-color-scheme: light) and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1290x2796-dark.png" media="(prefers-color-scheme: dark) and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1290x2796-light.png" media="(prefers-color-scheme: light) and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1320x2868-dark.png" media="(prefers-color-scheme: dark) and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./startup/ios-1320x2868-light.png" media="(prefers-color-scheme: light) and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+
 <!-- On modern iOS standalone apps, leave the status bar style unset so
      WebKit can sample the page background for both light and dark themes. -->
 <meta name="apple-mobile-web-app-title" content="Ghost Beads">
@@ -43,6 +67,33 @@
   #statusBarBackdrop {
     position:fixed;top:0;left:0;width:100%;height:2px;
     background:var(--bg);pointer-events:none;z-index:1;
+  }
+  /* The installed iOS PWA hides the classic HTML until the React skin mounts.
+     A theme-matched launch layer prevents the classic-to-Glass first-paint flash. */
+  #ghostLaunchScreen { display:none; }
+  html.ghost-ios-booting body > :not(#ghostLaunchScreen) { visibility:hidden !important; }
+  html.ghost-ios-booting #ghostLaunchScreen {
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    z-index:2147483647;background:var(--bg);visibility:visible!important;
+  }
+  #ghostLaunchScreen img {display:block;width:146px;height:146px;object-fit:cover;border-radius:32px;}
+
+  /* GB_NATIVE_GUTTERS_16: iPhone Settings cards are 16 CSS px from the edge.
+     Keep this independent of the optional matte stylesheet to avoid old-cache
+     conflicts and avoid touching the GlassSheet's spring/drag mechanics. */
+  @media (max-width:600px) and (orientation:portrait) {
+    html[data-ghost-ui="ios27-glass"] .lg-sheet.lg-sheet--detents {
+      width:100% !important;
+    }
+    html[data-ghost-ui="ios27-glass"] .lg-sheet.lg-sheet--detents > .lg-sheet__content {
+      padding-inline:0 !important;
+    }
+    html[data-ghost-ui="ios27-glass"] .lg-sheet.lg-sheet--detents .gbglass-sheet-content {
+      width:100% !important;max-width:none !important;box-sizing:border-box;
+    }
+    html[data-ghost-ui="ios27-glass"] .lg-sheet.lg-sheet--detents .gbglass-sheet-scroll {
+      padding-inline:16px !important;
+    }
   }
   *{box-sizing:border-box}
   /* Installed PWA: prevent accidental selection of app interface text.
@@ -791,10 +842,32 @@
   window.ghostApplePWA=false;
   document.documentElement.dataset.applePwa='false';
   document.documentElement.dataset.ghostUi=window.ghostIOS27PWA?'ios27-glass':'classic';
+  if(window.ghostIOS27PWA){
+    const root=document.documentElement;
+    root.classList.add('ghost-ios-booting');
+    let released=false;
+    let timer;
+    const observer=new MutationObserver(()=>{
+      if(root.classList.contains('ghost-glass-active')) finish();
+    });
+    function finish(){
+      if(released)return;
+      released=true;
+      observer.disconnect();
+      clearTimeout(timer);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove('ghost-ios-booting')));
+    }
+    window.ghostReleaseLaunch=finish;
+    observer.observe(root,{attributes:true,attributeFilter:['class']});
+    // Fail open if the bundle is unavailable: never strand users on the icon.
+    timer=setTimeout(finish,11000);
+  }
+
 })();
 </script>
 </head>
 <body>
+<div id="ghostLaunchScreen" role="status" aria-label="Loading Ghost Beads"><img src="./icons/icon-512.png" alt="" width="146" height="146"></div>
 <div id="statusBarBackdrop" aria-hidden="true"></div>
 <main class="shell">
   <header class="header">
@@ -2286,6 +2359,7 @@ if(window.ghostIOS27PWA){
     const detail=String(error?.message||error||'Unknown error');
     window.ghostGlassInfo.error=detail;
     window.ghostGlassInfo.state='failed';
+    window.ghostReleaseLaunch?.();
     glassNotice('Liquid Glass could not start: '+detail+'. Confirm glass/glass-app.js and glass/glass-app.css exist on your server.',true);
     console.error('[Ghost Beads] Liquid Glass failed:',error);
     css.remove();

@@ -5,6 +5,15 @@ const PREVIOUS_WHOLE_VOICE_CACHE = 'ghost-beads-pwa-v39-whole-number-voice';
 const REUSE_MARKER = new URL('__voice-reuse-legacy__', self.registration.scope).href;
 const STATIC_ASSETS = [
   './', './index.html', './manifest.webmanifest',
+  './js/core/soroban.js',
+  './js/core/exercise-generator.js',
+  './js/playback/controller.js',
+  './js/app/settings.js',
+  './js/app/progress.js',
+  './js/rendering/canvas.js',
+  './js/ui/settings-dialog.js',
+  './js/ui/bindings.js',
+  './js/app/main.js',
   './glass/glass-app.js', './glass/glass-app.css',
   './glass/matte.css',
   './icons/icon-192.png', './icons/icon-512.png',
